@@ -1,10 +1,13 @@
 // Copyright 2016 Toyota Research Institute.  All rights reserved.
 
 // NOLINTNEXTLINE(build/c++11)
+#define OPENCV
 
 #include <iostream>
 
-// #include <opencv2/opencv.hpp>
+#ifdef OPENCV
+#include <opencv2/opencv.hpp>
+#endif
 
 #include <gflags/gflags.h>
 
@@ -25,6 +28,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 
+#include "drake/systems/rendering/pose_vector.h"
 #include "drake/systems/sensors/rgbd_camera.h"
 #include "drake/systems/sensors/image.h"
 
@@ -71,8 +75,12 @@ class RenderingSim : public systems::Diagram<double> {
     } else if (ext == ".urdf") {
 
       drake::parsers::PackageMap package_map;
-      package_map.Add("hsrb_description",
-                      "/home/kunimatsu/ws_hsrb/src/hsrb_description/");
+      package_map.Add(
+          "hsrb_description",
+          "/home/kunimatsu/ws_hsrb/src/hsrb_description/");
+      package_map.Add(
+          "Atlas",
+          "/home/kunimatsu/work/kuni-drake/drake/drake/examples/Atlas/");
       drake::parsers::urdf::AddModelInstanceFromUrdfFileSearchingInRosPackages(
           filename, package_map, kFixed, /*kQuaternion,*/ nullptr, tree.get());
     } else {
@@ -129,14 +137,19 @@ class RenderingSim : public systems::Diagram<double> {
     builder.Connect(plant_->get_output_port(0),
                     rgbd_camera_->get_input_port(0));
 
-    builder.ExportOutput(rgbd_camera_->get_output_port(0));
-    builder.ExportOutput(rgbd_camera_->get_output_port(1));
+    builder.ExportOutput(rgbd_camera_->color_image_output_port());
+    builder.ExportOutput(rgbd_camera_->depth_image_output_port());
+    builder.ExportOutput(rgbd_camera_->camera_base_pose_output_port());
 
     for (int i = 0; i < plant_->get_num_output_ports(); ++i) {
       builder.ExportOutput(plant_->get_output_port(i));
     }
 
     builder.BuildInto(this);
+  }
+
+  Eigen::Isometry3d X_BD() {
+    return rgbd_camera_->depth_camera_optical_pose();
   }
 
  private:
@@ -189,7 +202,13 @@ int main(int argc, char* argv[]) {
   auto depth_image =
       mutable_data_d->GetMutableValue<drake::systems::sensors::Image<float>>();
 
-  /*
+  auto X_WC = dynamic_cast<drake::systems::rendering::PoseVector<double>*>(
+      output->GetMutableVectorData(2));
+  auto X_WD = X_WC->get_isometry() * diagram.X_BD();
+
+  std::cout << X_WD.matrix() << std::endl;
+
+#ifdef OPENCV
   cv::Mat cv_color(kImageHeight, kImageWidth, CV_8UC4, cv::Scalar(0, 0, 0, 255));
   cv::Mat cv_depth(kImageHeight, kImageWidth, CV_16UC1, cv::Scalar(0));
 
@@ -200,13 +219,14 @@ int main(int argc, char* argv[]) {
       cv_color.at<cv::Vec4b>(r, c)[2] = color_image.at(c, r)[2];
       cv_color.at<cv::Vec4b>(r, c)[3] = color_image.at(c, r)[3];
       cv_depth.at<uint16_t>(r, c) = static_cast<uint16_t>(
-          depth_image.at(c, r)[0] * 65535);
+          depth_image.at(c, r)[0] * 1000.f);
     }
   }
 
   cv::imwrite("color.png", cv_color);
   cv::imwrite("depth.png", cv_depth);
-  */
+#endif
+
   return 0;
 }
 

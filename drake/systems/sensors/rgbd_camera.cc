@@ -1,5 +1,9 @@
 #include "drake/systems/sensors/rgbd_camera.h"
 
+// #include <vtkOBJWriter.h>
+#include <vtkSTLWriter.h>
+#include <vtkAppendPolyData.h>
+
 #include <array>
 #include <fstream>
 #include <map>
@@ -511,6 +515,7 @@ void RgbdCamera::Impl::CreateRenderingWorld() {
 void RgbdCamera::Impl::UpdateModelPoses(
     const KinematicsCache<double>& cache,
     const Eigen::Isometry3d& X_CW) const {
+  vtkNew<vtkAppendPolyData> poly_appender;
   for (const auto& body : tree_.bodies) {
     if (body->get_name() == std::string(RigidBodyTreeConstants::kWorldName)) {
       continue;
@@ -521,6 +526,21 @@ void RgbdCamera::Impl::UpdateModelPoses(
       const auto X_CVisual = X_CW * tree_.CalcBodyPoseInWorldFrame(
           cache, *body) * visual.getLocalTransform();
 
+      // From here
+      const auto X_WVisual = tree_.CalcBodyPoseInWorldFrame(
+          cache, *body) * visual.getLocalTransform();
+      vtkSmartPointer<vtkTransform> vtk_trans =
+          VtkUtil::ConvertToVtkTransform(X_WVisual);
+      auto& actor = id_object_maps_[0].at(body->get_body_index()).at(i);
+      vtkSmartPointer<vtkPolyData> poly = vtkPolyData::SafeDownCast(
+          actor->GetMapper()->GetInputAsDataSet());
+      vtkNew<vtkTransformPolyDataFilter> filter;
+      filter->SetInput(poly);
+      filter->SetTransform(vtk_trans);
+      filter->Update();
+      poly_appender->AddInputConnection(filter->GetOutputPort());
+      poly_appender->Update();
+      // Until here
       vtkSmartPointer<vtkTransform> vtk_transform =
           VtkUtil::ConvertToVtkTransform(X_CVisual);
       // `id_object_maps_` is modified here. This is OK because 1) we are just
@@ -532,6 +552,13 @@ void RgbdCamera::Impl::UpdateModelPoses(
       }
     }
   }
+
+  // From here
+  vtkNew<vtkSTLWriter> writer;
+  writer->SetFileName("mesh.stl");
+  writer->SetInputConnection(poly_appender->GetOutputPort());
+  writer->Write();
+  // Until here
 
   if (!kCameraFixed) {
     // Updates terrain.
@@ -561,6 +588,18 @@ void RgbdCamera::Impl::DoCalcOutput(
     systems::SystemOutput<double>* output) const {
   const Eigen::VectorXd q = input_vector.CopyToVector().head(
       tree_.get_num_positions());
+  /*
+  Eigen::VectorXd q = input_vector.CopyToVector().head(
+      tree_.get_num_positions());
+  std::cout << tree_.get_num_positions() << std::endl;
+  for (int i = 0; i < tree_.get_num_positions(); ++i) {
+    std::cout << i << ": " << tree_.get_position_name(i) << std::endl;
+  }
+  q[10] = - M_PI_4 * 0.5;
+  q[14] = - M_PI_2;
+  q[15] = - M_PI_2;
+  */
+
   KinematicsCache<double> cache = tree_.doKinematics(q);
 
   Eigen::Isometry3d X_WB;

@@ -1,5 +1,5 @@
-# find_package(OpenCV)
-# include_directories(${OpenCV_DIRS})
+find_package(OpenCV)
+include_directories(${OpenCV_DIRS})
 
 if(lcm_FOUND)
   add_executable(rgbd_camera_sim rgbd_camera_sim.cc)
@@ -13,6 +13,6 @@ if(lcm_FOUND)
     drakeSystemPrimitives
     gflags
     lcm
-  #  ${OpenCV_LIBS}
+    ${OpenCV_LIBS}
   )
 endif()
