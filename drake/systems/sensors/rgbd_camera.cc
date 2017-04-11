@@ -26,6 +26,8 @@
 #include <vtkTransform.h>
 #include <vtkTransformPolyDataFilter.h>
 #include <vtkWindowToImageFilter.h>
+#include <vtkImageBlend.h>
+#include <vtkDataSetMapper.h>
 
 #include "drake/math/roll_pitch_yaw.h"
 #include "drake/systems/rendering/pose_vector.h"
@@ -302,6 +304,12 @@ class RgbdCamera::Impl {
   vtkNew<vtkWindowToImageFilter> color_filter_;
   vtkNew<vtkWindowToImageFilter> depth_filter_;
   vtkNew<vtkWindowToImageFilter> label_filter_;
+
+  // vtkNew<vtkImageBlend> blender_;
+  // vtkNew<vtkDataSetMapper> mapper_;
+  // vtkNew<vtkActor> actor_;
+  // vtkNew<vtkRenderer> renderer_;
+  // vtkNew<vtkRenderWindow> window_;
 };
 
 
@@ -328,7 +336,7 @@ RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
       X_WB_initial_(
           Eigen::Translation3d(position[0], position[1], position[2]) *
           Eigen::Isometry3d(math::rpy2rotmat(orientation))),
-      kCameraFixed(fix_camera), color_palette_(tree.bodies.size()) {
+      kCameraFixed(fix_camera), color_palette_(7/*tree.bodies.size()*/) {
   if (!show_window) {
     for (auto& window : MakeVtkInstanceArray(color_depth_render_window_,
                                              label_render_window_)) {
@@ -375,6 +383,18 @@ RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
     filter->ReadFrontBufferOff();
     filter->Update();
   }
+
+  // blender_->AddInputConnection(color_filter_->GetOutputPort());
+  // blender_->AddInputConnection(label_filter_->GetOutputPort());
+  // blender_->SetOpacity(0, .5);
+  // blender_->SetOpacity(1, .5);
+  // mapper_->SetInputConnection(blender_->GetOutputPort());
+  // actor_->SetMapper(mapper_.GetPointer());
+
+  // renderer_->AddActor(actor_.GetPointer());
+  // window_->SetSize(color_camera_info_.width(),
+  //                  color_camera_info_.height());
+  // window_->AddRenderer(renderer_.GetPointer());
 }
 
 RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
@@ -495,7 +515,9 @@ void RgbdCamera::Impl::CreateRenderingWorld() {
         }
 
         const int body_id = body->get_body_index();
-        const auto& color = color_palette_.get_normalized_color(body_id);
+        const auto& color = color_palette_.get_normalized_color(
+            body->get_model_instance_id());
+            // body_id);
         vtkNew<vtkActor> actor_for_label;
         actor_for_label->GetProperty()->SetColor(color.r, color.g, color.b);
         // This is to disable shadows and to get an object painted with a single
@@ -589,6 +611,7 @@ void RgbdCamera::Impl::UpdateRenderWindow() const {
     filter->Modified();
     filter->Update();
   }
+  // window_->Render();
 }
 
 void RgbdCamera::Impl::DoCalcOutput(
@@ -596,6 +619,7 @@ void RgbdCamera::Impl::DoCalcOutput(
     systems::SystemOutput<double>* output) const {
   const Eigen::VectorXd q = input_vector.CopyToVector().head(
       tree_.get_num_positions());
+
   KinematicsCache<double> cache = tree_.doKinematics(q);
 
   Eigen::Isometry3d X_WB;
