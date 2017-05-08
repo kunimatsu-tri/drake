@@ -250,6 +250,10 @@ class RgbdCamera::Impl {
        const Eigen::Vector3d& position, const Eigen::Vector3d& orientation,
        double fov_y, bool show_window, bool fix_camera);
 
+  Impl(const RigidBodyTree<double>& tree, const RigidBodyFrame<double>& frame,
+       const Eigen::Isometry3d& X_WB,
+       double fov_y, bool show_window, bool fix_camera);
+
   ~Impl() {}
 
   static float CheckRangeAndConvertToMeters(float z_buffer_value);
@@ -312,11 +316,9 @@ class RgbdCamera::Impl {
   // vtkNew<vtkRenderWindow> window_;
 };
 
-
 RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
                        const RigidBodyFrame<double>& frame,
-                       const Eigen::Vector3d& position,
-                       const Eigen::Vector3d& orientation,
+                       const Eigen::Isometry3d& X_WB,
                        double fov_y, bool show_window, bool fix_camera)
     : tree_(tree), frame_(frame),
       color_camera_info_(kImageWidth, kImageHeight, fov_y),
@@ -333,9 +335,7 @@ RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
       X_BD_(Eigen::Translation3d(0., 0.02, 0.) *
             (Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) *
              Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitY()))),
-      X_WB_initial_(
-          Eigen::Translation3d(position[0], position[1], position[2]) *
-          Eigen::Isometry3d(math::rpy2rotmat(orientation))),
+      X_WB_initial_(X_WB),
       kCameraFixed(fix_camera), color_palette_(7/*tree.bodies.size()*/) {
   if (!show_window) {
     for (auto& window : MakeVtkInstanceArray(color_depth_render_window_,
@@ -343,7 +343,7 @@ RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
       window->SetOffScreenRendering(1);
     }
   }
-
+  // label_render_window_->SetOffScreenRendering(1);
   CreateRenderingWorld();
 
   vtkNew<vtkCamera> camera;
@@ -396,6 +396,17 @@ RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
   //                  color_camera_info_.height());
   // window_->AddRenderer(renderer_.GetPointer());
 }
+
+
+RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
+                       const RigidBodyFrame<double>& frame,
+                       const Eigen::Vector3d& position,
+                       const Eigen::Vector3d& orientation,
+                       double fov_y, bool show_window, bool fix_camera)
+    : Impl::Impl(tree, frame,
+                 Eigen::Translation3d(position) *
+                 Eigen::Isometry3d(math::rpy2rotmat(orientation)),
+                 fov_y, show_window, fix_camera) {}
 
 RgbdCamera::Impl::Impl(const RigidBodyTree<double>& tree,
                        const RigidBodyFrame<double>& frame,
@@ -723,6 +734,16 @@ RgbdCamera::RgbdCamera(const std::string& name,
                        bool show_window)
     : impl_(new RgbdCamera::Impl(tree, RigidBodyFrame<double>(), position,
                                  orientation, fov_y, show_window, true)) {
+  Init(name);
+}
+
+RgbdCamera::RgbdCamera(const std::string& name,
+                       const RigidBodyTree<double>& tree,
+                       const Eigen::Isometry3d& X_WB,
+                       double fov_y,
+                       bool show_window)
+    : impl_(new RgbdCamera::Impl(tree, RigidBodyFrame<double>(), X_WB,
+                                 fov_y, show_window, true)) {
   Init(name);
 }
 

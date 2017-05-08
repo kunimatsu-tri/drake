@@ -139,6 +139,31 @@ class RgbdCamera : public LeafSystem<double> {
              double fov_y,
              bool show_window);
 
+  /// A constructor for %RgbdCamera that defines `B` using Eigen::Isometry3d.
+  /// The pose of %RgbdCamera will be fixed to the world coordinate system
+  /// throughout the simulation.
+  ///
+  /// @param name The name of the RgbdCamera.  This can be any value, but
+  /// should typically be unique among all sensors attached to a particular
+  /// model instance.
+  ///
+  /// @param tree The RigidBodyTree containing the geometric description of the
+  /// world. The life span of this parameter must exceed that of this class's
+  /// instance. The maximum number of bodies in the `tree` must be less than
+  /// 1536 based on the number of the colors used for the label image.
+  ///
+  /// @param X_WB The pose of `B` in `W`.
+  ///
+  /// @param fov_y The RgdbCamera's vertical field of view.
+  ///
+  /// @param show_window A flag for showing a visible window.  If this is false,
+  /// offscreen rendering is executed. This is useful for debugging purposes.
+  RgbdCamera(const std::string& name,
+             const RigidBodyTree<double>& tree,
+             const Eigen::Isometry3d& X_WB,
+             double fov_y,
+             bool show_window);
+
   /// A constructor for %RgbdCamera that defines `B` using a RigidBodyFrame.
   /// The pose of %RgbdCamera is fixed to a user-defined frame and will be
   /// updated during the simulation.
