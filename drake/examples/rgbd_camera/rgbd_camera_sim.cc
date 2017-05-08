@@ -55,10 +55,53 @@ const uint32_t kNumPixels = kImageWidth * kImageHeight;
 const double kFrameRate = 30.;
 const double kVerticalFov = M_PI_4;
 
+Eigen::Isometry3d LookAt(const Eigen::Vector3d point_to_look,
+                         const Eigen::Vector3d from) {
+  Eigen::Vector3d x_axis = point_to_look - from;
+  x_axis = x_axis / x_axis.norm();
+  Eigen::Vector3d up(0., 0., 1.);
+  Eigen::Vector3d y_axis = up.cross(x_axis);
+  y_axis = y_axis / y_axis.norm();
+  Eigen::Vector3d z_axis = x_axis.cross(y_axis);
+  Eigen::Matrix3d rot_mat;
+  rot_mat <<
+      x_axis[0], y_axis[0], z_axis[0],
+      x_axis[1], y_axis[1], z_axis[1],
+      x_axis[2], y_axis[2], z_axis[2];
+
+  Eigen::Isometry3d X_WC;
+  X_WC.translation() = from;
+  X_WC.linear().matrix() = rot_mat;
+
+  return X_WC;
+}
+
+std::vector<Eigen::Vector3d> CreateSphericalViewpoints(
+    std::array<double, 3> distances, int num_azimuth_division,
+    int num_elevation_division) {
+  std::vector<Eigen::Vector3d> viewpoints;
+  const double elevation_step = M_PI_2 / num_elevation_division;
+  const double azimuth_step = M_PI_2 / num_azimuth_division;
+  for (size_t i = 0; i < distances.size(); ++i) {
+    double d = distances[i];
+    for (int e = 0; e < num_elevation_division; ++e) {
+      for (int a = 0; a < num_azimuth_division; ++a) {
+        double z = d * std::sin(elevation_step * e + M_PI / 100. * 3);
+        double l = d * std::cos(elevation_step * e + M_PI / 100. * 3);
+        double x = l * std::cos(azimuth_step * a);
+        double y = l * std::sin(azimuth_step * a);
+        viewpoints.push_back(Eigen::Vector3d(x, y, z));
+      }
+    }
+  }
+  return viewpoints;
+}
+
 // A demo of an RgbdCamera rendering simulator.
 class RenderingSim : public systems::Diagram<double> {
  public:
-  explicit RenderingSim(const std::string& filename) {
+  RenderingSim(const std::string& filename,
+               const Eigen::Isometry3d& X_WC) {
     this->set_name("RenderingSim");
 
     const size_t last_dot = filename.find_last_of(".");
@@ -92,6 +135,7 @@ class RenderingSim : public systems::Diagram<double> {
 
     // Instantiates a RigidBodyPlant from the MBD model of the world.
     plant_ = builder.AddSystem<RigidBodyPlant<double>>(move(tree));
+    plant_->set_name("rigid_body_plant");
     plant_->set_normal_contact_parameters(3000, 10);
     plant_->set_friction_contact_parameters(0.9, 0.5, 0.01);
 
@@ -113,7 +157,7 @@ class RenderingSim : public systems::Diagram<double> {
         systems::ConstantVectorSource<double>* constant_vector_source =
             builder.template AddSystem<systems::ConstantVectorSource<double>>(
                 constant_value);
-        constant_vector_source->set_name("ConstantVectorZeroSource");
+        constant_vector_source->set_name("constant_vector_zero_source");
         builder.Connect(constant_vector_source->get_output_port(), input_port);
       }
     }
@@ -121,12 +165,14 @@ class RenderingSim : public systems::Diagram<double> {
     // Creates and adds LCM publisher for visualization.
     viz_publisher_ = builder.AddSystem<DrakeVisualizer>(
         plant_->get_rigid_body_tree(), &lcm_);
+    viz_publisher_->set_name("drake_visualizer");
 
     rgbd_camera_ = builder.AddSystem<RgbdCamera>(
         "rgbd_camera", plant_->get_rigid_body_tree(),
-        Vector3d(1., 0, 1.5), Vector3d(0., M_PI_4, M_PI),
+        X_WC,
+        // Vector3d(1., 0, 1.5), Vector3d(0., M_PI_4, M_PI),
         kVerticalFov, true);
-
+    rgbd_camera_->set_name("rgbd_camera");
     // builder.Connect(constant_vector_source->get_output_port(),
     //                 plant_->get_input_port(0));
 
@@ -163,6 +209,19 @@ class RenderingSim : public systems::Diagram<double> {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+
+  // Camera Viewpoints creation.
+  auto viewpoints = CreateSphericalViewpoints(
+      std::array<double, 3>{{1., 2., 3.}},
+      6,  // 15.0 deg
+      4);  // 22.5 deg
+
+  std::vector<Eigen::Isometry3d> X_WC_array;
+  for (const auto& p : viewpoints) {
+    Eigen::Isometry3d X_WC = LookAt(Eigen::Vector3d(0, 0, 0), p);
+    X_WC_array.push_back(X_WC);
+  }
+
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   logging::HandleSpdlogGflags();
 
@@ -175,57 +234,58 @@ int main(int argc, char* argv[]) {
               << std::endl;
     return 0;
   }
+  int i = 0;
+  for (const auto& X_WC_in : X_WC_array) {
+    RenderingSim diagram(argv[1], X_WC_in);
 
-  RenderingSim diagram(argv[1]);
+    unique_ptr<systems::Context<double>> context =
+        diagram.CreateDefaultContext();
+    unique_ptr<systems::SystemOutput<double>> output =
+        diagram.AllocateOutput(*context);
+    systems::Simulator<double> simulator(diagram, move(context));
 
-  unique_ptr<systems::Context<double>> context =
-      diagram.CreateDefaultContext();
-  unique_ptr<systems::SystemOutput<double>> output =
-      diagram.AllocateOutput(*context);
-  systems::Simulator<double> simulator(diagram, move(context));
+    simulator.Initialize();
+    simulator.set_target_realtime_rate(1.);
+    // Simulate for the desired duration.
+    for (double time = 0.; time < FLAGS_duration; time += .0333) {
+      simulator.StepTo(time);
+      diagram.CalcOutput(simulator.get_context(), output.get());
+    }
 
-  // systems::Simulator<double> simulator(diagram);
-  simulator.Initialize();
+    systems::AbstractValue* mutable_data = output->GetMutableData(0);
+    auto color_image =
+        mutable_data->GetMutableValue<drake::systems::sensors::Image<uint8_t>>();
 
-  simulator.set_target_realtime_rate(1.);
-  // Simulate for the desired duration.
-  for (double time = 0.; time < FLAGS_duration; time += .0333) {
-    simulator.StepTo(time);
-    diagram.CalcOutput(simulator.get_context(), output.get());
-  }
+    systems::AbstractValue* mutable_data_d = output->GetMutableData(1);
+    auto depth_image =
+        mutable_data_d->GetMutableValue<drake::systems::sensors::Image<float>>();
 
-  systems::AbstractValue* mutable_data = output->GetMutableData(0);
-  auto color_image =
-      mutable_data->GetMutableValue<drake::systems::sensors::Image<uint8_t>>();
-
-  systems::AbstractValue* mutable_data_d = output->GetMutableData(1);
-  auto depth_image =
-      mutable_data_d->GetMutableValue<drake::systems::sensors::Image<float>>();
-
-  auto X_WC = dynamic_cast<drake::systems::rendering::PoseVector<double>*>(
-      output->GetMutableVectorData(2));
-  auto X_WD = X_WC->get_isometry() * diagram.X_BD();
-
-  std::cout << X_WD.matrix() << std::endl;
+    auto X_WC = dynamic_cast<drake::systems::rendering::PoseVector<double>*>(
+        output->GetMutableVectorData(2));
+    auto X_WD = X_WC->get_isometry() * diagram.X_BD();
+    std::cout << i << std::endl;
+    std::cout << X_WD.matrix() << std::endl;
 
 #ifdef OPENCV
-  cv::Mat cv_color(kImageHeight, kImageWidth, CV_8UC4, cv::Scalar(0, 0, 0, 255));
-  cv::Mat cv_depth(kImageHeight, kImageWidth, CV_16UC1, cv::Scalar(0));
+    cv::Mat cv_color(kImageHeight, kImageWidth, CV_8UC4, cv::Scalar(0, 0, 0, 255));
+    cv::Mat cv_depth(kImageHeight, kImageWidth, CV_16UC1, cv::Scalar(0));
 
-  for (uint32_t r = 0; r < kImageHeight; ++r) {
-    for (uint32_t c = 0; c < kImageWidth; ++c) {
-      cv_color.at<cv::Vec4b>(r, c)[0] = color_image.at(c, r)[0];
-      cv_color.at<cv::Vec4b>(r, c)[1] = color_image.at(c, r)[1];
-      cv_color.at<cv::Vec4b>(r, c)[2] = color_image.at(c, r)[2];
-      cv_color.at<cv::Vec4b>(r, c)[3] = color_image.at(c, r)[3];
-      cv_depth.at<uint16_t>(r, c) = static_cast<uint16_t>(
-          depth_image.at(c, r)[0] * 1000.f);
+    for (uint32_t r = 0; r < kImageHeight; ++r) {
+      for (uint32_t c = 0; c < kImageWidth; ++c) {
+        cv_color.at<cv::Vec4b>(r, c)[0] = color_image.at(c, r)[0];
+        cv_color.at<cv::Vec4b>(r, c)[1] = color_image.at(c, r)[1];
+        cv_color.at<cv::Vec4b>(r, c)[2] = color_image.at(c, r)[2];
+        cv_color.at<cv::Vec4b>(r, c)[3] = color_image.at(c, r)[3];
+        cv_depth.at<uint16_t>(r, c) = static_cast<uint16_t>(
+            depth_image.at(c, r)[0] * 1000.f);
+      }
     }
-  }
 
-  cv::imwrite("color.png", cv_color);
-  cv::imwrite("depth.png", cv_depth);
+    cv::imwrite("color" + std::to_string(i) + ".png", cv_color);
+    cv::imwrite("depth" + std::to_string(i) + ".png", cv_depth);
 #endif
+    ++i;
+  }
 
   return 0;
 }
