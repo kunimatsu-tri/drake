@@ -17,6 +17,7 @@
 #include "drake/systems/rendering/pose_stamped_t_pose_vector_translator.h"
 #include "drake/systems/sensors/image_to_lcm_image_array_t.h"
 #include "drake/systems/sensors/rgbd_camera.h"
+#include "drake/systems/sensors/scoped_timer.h"
 
 using std::cout;
 using std::endl;
@@ -60,7 +61,7 @@ DEFINE_validator(sdf_dir, &ValidateDir);
 DEFINE_validator(sdf_fixed, &ValidateSdf);
 DEFINE_validator(sdf_floating, &ValidateSdf);
 
-constexpr double kCameraUpdatePeriod{0.01};
+constexpr double kCameraUpdatePeriod{0.0333};
 
 constexpr char kCameraBaseFrameName[] = "camera_base_frame";
 constexpr char kColorCameraFrameName[] = "color_camera_optical_frame";
@@ -123,7 +124,7 @@ int main() {
               "rgbd_camera", plant->get_rigid_body_tree(),
               config.pos, config.rpy,
               config.depth_range_near, config.depth_range_far,
-              config.fov_y),
+              config.fov_y, true),
       kCameraUpdatePeriod);
 
   auto image_to_lcm_image_array =
@@ -164,9 +165,9 @@ int main() {
       rgbd_camera->depth_image_output_port(),
       image_to_lcm_image_array->depth_image_input_port());
 
-  builder.Connect(
-      rgbd_camera->label_image_output_port(),
-      image_to_lcm_image_array->label_image_input_port());
+  // builder.Connect(
+  //    rgbd_camera->label_image_output_port(),
+  //    image_to_lcm_image_array->label_image_input_port());
 
   builder.Connect(
       image_to_lcm_image_array->image_array_t_msg_output_port(),
@@ -184,6 +185,7 @@ int main() {
   simulator->set_publish_at_initialization(true);
   simulator->set_publish_every_time_step(false);
   simulator->Initialize();
+  ScopedTimer timer("Simulation");
   simulator->StepTo(FLAGS_duration);
 
   return 0;

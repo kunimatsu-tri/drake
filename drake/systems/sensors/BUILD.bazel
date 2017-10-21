@@ -100,6 +100,7 @@ drake_cc_library(
     ],
     hdrs = [
         "image_to_lcm_image_array_t.h",
+        "scoped_timer.h"
     ],
     deps = [
         ":image",
@@ -202,7 +203,10 @@ drake_cc_library(
 drake_cc_library(
     name = "rgbd_camera",
     srcs = ["rgbd_camera.cc"],
-    hdrs = ["rgbd_camera.h"],
+    hdrs = [
+        "rgbd_camera.h",
+        "scoped_timer.h"
+        ],
     deps = [
         ":camera_info",
         ":image",

@@ -40,6 +40,7 @@
 #include "drake/systems/rendering/pose_vector.h"
 #include "drake/systems/sensors/camera_info.h"
 #include "drake/systems/sensors/image.h"
+#include "drake/systems/sensors/scoped_timer.h"
 #include "drake/systems/sensors/vtk_util.h"
 
 #if VTK_MAJOR_VERSION >= 6
@@ -847,6 +848,8 @@ void RgbdCamera::OutputPoseVector(
 
 void RgbdCamera::OutputColorImage(const Context<double>& context,
                                   ImageRgba8U* color_image) const {
+  ScopedTimer timer("Color");
+  std::cout << "######################################" << context.get_time() << std::endl;
   const BasicVector<double>* input_vector =
       this->EvalVectorInput(context, kPortStateInput);
 
@@ -855,6 +858,7 @@ void RgbdCamera::OutputColorImage(const Context<double>& context,
 
 void RgbdCamera::OutputDepthImage(const Context<double>& context,
                                   ImageDepth32F* depth_image) const {
+  ScopedTimer timer("Depth");
   const BasicVector<double>* input_vector =
       this->EvalVectorInput(context, kPortStateInput);
 
@@ -876,7 +880,8 @@ constexpr int16_t RgbdCamera::Label::kNoBody;
 constexpr int16_t RgbdCamera::Label::kFlatTerrain;
 
 RgbdCameraDiscrete::RgbdCameraDiscrete(std::unique_ptr<RgbdCamera> camera,
-                                       double period)
+                                       double period,
+				       bool enable_label)
     : camera_(camera.get()), period_(period) {
   const int width = kImageWidth, height = kImageHeight;
 
@@ -901,12 +906,14 @@ RgbdCameraDiscrete::RgbdCameraDiscrete(std::unique_ptr<RgbdCamera> camera,
   output_port_depth_image_ = builder.ExportOutput(zoh_depth->get_output_port());
 
   // Label image.
-  const Value<ImageLabel16I> image_label(width, height);
-  const auto* const zoh_label =
+  if (enable_label) {
+    const Value<ImageLabel16I> image_label(width, height);
+    const auto* const zoh_label =
       builder.AddSystem<ZeroOrderHold>(period_, image_label);
-  builder.Connect(camera_->label_image_output_port(),
-                  zoh_label->get_input_port());
-  output_port_label_image_ = builder.ExportOutput(zoh_label->get_output_port());
+    builder.Connect(camera_->label_image_output_port(),
+		    zoh_label->get_input_port());
+    output_port_label_image_ = builder.ExportOutput(zoh_label->get_output_port());
+  }
 
   // No need to place a ZOH on pose output.
   output_port_pose_ =

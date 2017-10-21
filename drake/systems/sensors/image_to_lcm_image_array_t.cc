@@ -9,6 +9,7 @@
 #include "robotlocomotion/image_t.hpp"
 
 #include "drake/systems/sensors/image.h"
+#include "drake/systems/sensors/scoped_timer.h"
 
 using std::string;
 using robotlocomotion::image_t;
@@ -30,16 +31,20 @@ void Compress(const Image<kPixelType>& image, image_t* msg) {
   // http://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/zlib-compress2-1.html
   size_t buf_size = source_size * 1.001 + 12;
   std::unique_ptr<uint8_t[]> buf(new uint8_t[buf_size]);
-
-  auto compress_status = compress2(
-      buf.get(), &buf_size, reinterpret_cast<const Bytef*>(image.at(0, 0)),
-      source_size, Z_BEST_SPEED);
-
-  DRAKE_DEMAND(compress_status == Z_OK);
-
-  msg->data.resize(buf_size);
-  msg->size = buf_size;
-  memcpy(&msg->data[0], buf.get(), buf_size);
+  {
+    ScopedTimer timer("Compress2", "  ");
+    std::cout << Z_BEST_SPEED << std::endl;
+    auto compress_status = compress2(
+        buf.get(), &buf_size, reinterpret_cast<const Bytef*>(image.at(0, 0)),
+	source_size, Z_BEST_SPEED);
+    DRAKE_DEMAND(compress_status == Z_OK);
+  }
+  {
+    ScopedTimer timer("Memcpy", "  ");
+    msg->data.resize(buf_size);
+    msg->size = buf_size;
+    memcpy(&msg->data[0], buf.get(), buf_size);
+  }
 }
 
 template <PixelType kPixelType>
@@ -105,6 +110,7 @@ ImageToLcmImageArrayT::image_array_t_msg_output_port() const {
 
 void ImageToLcmImageArrayT::CalcImageArray(
     const systems::Context<double>& context, image_array_t* msg) const {
+  ScopedTimer time("Image to LCM");
   msg->header.utime = static_cast<int64_t>(context.get_time() * kSecToMillisec);
   msg->header.frame_name.clear();
   msg->num_images = 0;
@@ -120,6 +126,7 @@ void ImageToLcmImageArrayT::CalcImageArray(
       this->EvalAbstractInput(context, label_image_input_port_index_);
 
   if (color_image_value) {
+    ScopedTimer timer("Color Image to LCM", "  ");
     const ImageRgba8U& color_image =
         color_image_value->GetValue<ImageRgba8U>();
 
@@ -133,6 +140,7 @@ void ImageToLcmImageArrayT::CalcImageArray(
   }
 
   if (depth_image_value) {
+    ScopedTimer timer("Depth Image to LCM", "  ");
     const ImageDepth32F& depth_image =
         depth_image_value->GetValue<ImageDepth32F>();
     image_t depth_image_msg;

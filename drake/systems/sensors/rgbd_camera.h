@@ -259,7 +259,8 @@ class RgbdCameraDiscrete : public systems::Diagram<double> {
   /// Constructs a diagram containing a (non-registered) RgbdCamera that will
   /// update at a given rate.
   RgbdCameraDiscrete(std::unique_ptr<RgbdCamera> camera,
-                     double period = 1. / 30);
+                     double period = 1. / 30,
+		     bool enable_label = false);
 
   /// Returns reference to RgbdCamera intsance.
   const RgbdCamera& camera() const { return *camera_; }
