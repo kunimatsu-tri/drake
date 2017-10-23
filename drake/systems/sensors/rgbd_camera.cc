@@ -205,10 +205,19 @@ void PerformVTKUpdate(
     const vtkNew<vtkRenderWindow>& window,
     const vtkNew<vtkWindowToImageFilter>& filter,
     const vtkNew<vtkImageExport>& exporter) {
-  window->Render();
-  filter->Modified();
-  filter->Update();
-  exporter->Update();
+  {
+    ScopedTimer timer("Render", "    ");
+    window->Render();
+  }
+  {
+    ScopedTimer timer("Modify and Update", "    ");
+    filter->Modified();
+    filter->Update();
+  }
+  {
+    ScopedTimer timer("Exporter Update", "    ");
+    exporter->Update();
+  }
 }
 
 }  // namespace
@@ -601,7 +610,10 @@ void RgbdCamera::Impl::OutputColorImage(const BasicVector<double>& input_vector,
   // TODO(sherm1) Should evaluate VTK cache entry.
   UpdateModelPoses(input_vector);
   PerformVTKUpdate(color_depth_render_window_, color_filter_, color_exporter_);
-  color_exporter_->Export(color_image->at(0, 0));
+  {
+    ScopedTimer timer("Exporter Export", "    ");
+    color_exporter_->Export(color_image->at(0, 0));
+  }
 }
 
 void RgbdCamera::Impl::OutputDepthImage(const BasicVector<double>& input_vector,
@@ -609,7 +621,10 @@ void RgbdCamera::Impl::OutputDepthImage(const BasicVector<double>& input_vector,
   // TODO(sherm1) Should evaluate VTK cache entry.
   UpdateModelPoses(input_vector);
   PerformVTKUpdate(color_depth_render_window_, depth_filter_, depth_exporter_);
-  depth_exporter_->Export(depth_image_out->at(0, 0));
+  {
+    ScopedTimer timer("Exporter Export", "    ");
+    depth_exporter_->Export(depth_image_out->at(0, 0));
+  }
 
   const int height = color_camera_info_.height();
   const int width = color_camera_info_.width();
