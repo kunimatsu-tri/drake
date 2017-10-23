@@ -124,7 +124,7 @@ int main() {
               "rgbd_camera", plant->get_rigid_body_tree(),
               config.pos, config.rpy,
               config.depth_range_near, config.depth_range_far,
-              config.fov_y, true),
+              config.fov_y, false),
       kCameraUpdatePeriod);
 
   auto image_to_lcm_image_array =
