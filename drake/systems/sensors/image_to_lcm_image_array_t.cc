@@ -23,6 +23,15 @@ namespace {
 const int64_t kSecToMillisec = 1000000;
 
 template <PixelType kPixelType>
+void Pack(const Image<kPixelType>& image, image_t* msg) {
+  msg->compression_method = image_t::COMPRESSION_METHOD_NOT_COMPRESSED;
+  const int size = image.width() * image.height() * image.kPixelSize;
+  msg->data.resize(size);
+  msg->size = size;
+  memcpy(&msg->data[0], image.at(0, 0), size);
+};
+
+template <PixelType kPixelType>
 void Compress(const Image<kPixelType>& image, image_t* msg) {
   msg->compression_method = image_t::COMPRESSION_METHOD_ZLIB;
 
@@ -63,7 +72,8 @@ void PackImageToLcmImageT(const Image<kPixelType>& image, int64_t utime,
   msg->channel_type = channel_type;
 
   // TODO(kunimatsu-tri) Make compression optional and/or selectable.
-  Compress(image, msg);
+  // Compress(image, msg);
+  Pack(image, msg);
 }
 
 }  // anonymous namespace
