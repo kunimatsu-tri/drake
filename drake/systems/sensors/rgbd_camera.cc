@@ -620,7 +620,16 @@ void RgbdCamera::Impl::OutputDepthImage(const BasicVector<double>& input_vector,
                                         ImageDepth32F* depth_image_out) const {
   // TODO(sherm1) Should evaluate VTK cache entry.
   UpdateModelPoses(input_vector);
-  PerformVTKUpdate(color_depth_render_window_, depth_filter_, depth_exporter_);
+  // PerformVTKUpdate(color_depth_render_window_, depth_filter_, depth_exporter_);
+  {
+    ScopedTimer timer("Modify and Update", "    ");
+    depth_filter_->Modified();
+    depth_filter_->Update();
+  }
+  {
+    ScopedTimer timer("Exporter Update", "    ");
+    depth_exporter_->Update();
+  }
   {
     ScopedTimer timer("Exporter Export", "    ");
     depth_exporter_->Export(depth_image_out->at(0, 0));
