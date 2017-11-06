@@ -98,10 +98,8 @@ class RgbdRendererTest : public ::testing::Test {
     }
   }
 
-  void SetUp() override {}
-
   // All tests on this class must invoke this first.
-  void SetUp(const Eigen::Isometry3d& X_WR, bool add_terrain = false) {
+  void Init(const Eigen::Isometry3d& X_WR, bool add_terrain = false) {
     renderer_ = std::make_unique<RgbdRenderer>(
         X_WR, kWidth, kHeight, kZNear, kZFar, kFovY, kShowWindow);
 
@@ -128,7 +126,7 @@ class RgbdRendererTest : public ::testing::Test {
 };
 
 TEST_F(RgbdRendererTest, InstantiationTest) {
-  SetUp(Isometry3d::Identity());
+  Init(Isometry3d::Identity());
 
   EXPECT_EQ(renderer_->width(), kWidth);
   EXPECT_EQ(renderer_->height(), kHeight);
@@ -136,7 +134,7 @@ TEST_F(RgbdRendererTest, InstantiationTest) {
 }
 
 TEST_F(RgbdRendererTest, NoBodyTest) {
-  SetUp(Isometry3d::Identity());
+  Init(Isometry3d::Identity());
   Render();
 
   VerifyUniformColor(renderer_->get_sky_color(), 0u);
@@ -150,7 +148,7 @@ TEST_F(RgbdRendererTest, NoBodyTest) {
 }
 
 TEST_F(RgbdRendererTest, TerrainTest) {
-  SetUp(X_WR_, true);
+  Init(X_WR_, true);
 
   const auto& kTerrain = renderer_->get_flat_terrain_color();
   // At two different distances.
@@ -191,7 +189,7 @@ TEST_F(RgbdRendererTest, HorizonTest) {
       Eigen::Translation3d(0, 0, 0) *
       Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) *
       Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitY());
-  SetUp(X_WR, true);
+  Init(X_WR, true);
 
   // Returns y in [0, kHeight / 2], index of horizon location in image
   // coordinate system under two assumptions: 1) the gound plane is not clipped
@@ -227,7 +225,7 @@ TEST_F(RgbdRendererTest, HorizonTest) {
 }
 
 TEST_F(RgbdRendererTest, BoxTest) {
-  SetUp(X_WR_, true);
+  Init(X_WR_, true);
 
   // Sets up a box.
   Isometry3d X_WV = Isometry3d::Identity();
@@ -255,7 +253,7 @@ TEST_F(RgbdRendererTest, BoxTest) {
 }
 
 TEST_F(RgbdRendererTest, SphereTest) {
-  SetUp(X_WR_, true);
+  Init(X_WR_, true);
 
   // Sets up a sphere.
   Isometry3d X_WV = Isometry3d::Identity();
@@ -282,9 +280,9 @@ TEST_F(RgbdRendererTest, SphereTest) {
 }
 
 TEST_F(RgbdRendererTest, CylinderTest) {
-  SetUp(X_WR_, true);
+  Init(X_WR_, true);
 
-  // Sets up a sphere.
+  // Sets up a cylinder.
   Isometry3d X_WV = Isometry3d::Identity();
   X_WV.translation().z() = 0.6;
   DrakeShapes::VisualElement visual(X_WV);
@@ -309,7 +307,7 @@ TEST_F(RgbdRendererTest, CylinderTest) {
 }
 
 TEST_F(RgbdRendererTest, MeshTest) {
-  SetUp(X_WR_, true);
+  Init(X_WR_, true);
 
   Isometry3d X_WV = Isometry3d::Identity();
   DrakeShapes::VisualElement visual(X_WV);
@@ -324,7 +322,7 @@ TEST_F(RgbdRendererTest, MeshTest) {
 
   VerifyOutliers();
 
-  // Verifies inside the cylinder.
+  // Verifies inside the mesh.
   const int x = kInlier.x;
   const int y = kInlier.y;
   // Color
