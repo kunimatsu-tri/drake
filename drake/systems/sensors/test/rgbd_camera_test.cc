@@ -61,26 +61,30 @@ void VerifyCameraInfo(const CameraInfo& camera_info) {
   EXPECT_NEAR(kExpectedFocal, camera_info.focal_y(), kTolerance);
 }
 
-void VerifyCameraPose(const Eigen::Isometry3d camera_optical_pose) {
-  // This is calculated by hand.
-  const Eigen::Isometry3d kExpected((
-      Eigen::Matrix4d() <<
-       0.,  0., 1., 0.,
-      -1.,  0., 0., 0.02,
-       0., -1., 0., 0.,
-       0.,  0., 0., 1.).finished());
-
-  EXPECT_TRUE(CompareMatrices(kExpected.matrix(),
-                              camera_optical_pose.matrix(),
-                              kTolerance));
-}
-
 GTEST_TEST(RgbdCamera, TestInstantiation) {
   auto Verify = [](const RgbdCamera& camera) {
     VerifyCameraInfo(camera.color_camera_info());
     VerifyCameraInfo(camera.depth_camera_info());
-    VerifyCameraPose(camera.color_camera_optical_pose());
-    VerifyCameraPose(camera.depth_camera_optical_pose());
+    // This is calculated by hand.
+    const Eigen::Isometry3d kColorPoseExpected((
+        Eigen::Matrix4d() <<
+        0.,  0., 1., 0.,
+        -1.,  0., 0., 0.02,
+        0., -1., 0., 0.,
+        0.,  0., 0., 1.).finished());
+    EXPECT_TRUE(CompareMatrices(kColorPoseExpected.matrix(),
+                                camera.color_camera_optical_pose().matrix(),
+                                kTolerance));
+    // This is calculated by hand.
+    const Eigen::Isometry3d kDepthPoseExpected((
+        Eigen::Matrix4d() <<
+        0.,  0., 1., 0.,
+        -1.,  0., 0., 0.05,
+        0., -1., 0., 0.,
+        0.,  0., 0., 1.).finished());
+    EXPECT_TRUE(CompareMatrices(kDepthPoseExpected.matrix(),
+                                camera.depth_camera_optical_pose().matrix(),
+                                kTolerance));
     EXPECT_NO_THROW(camera.tree());
   };
 
