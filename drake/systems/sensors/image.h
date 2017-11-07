@@ -117,6 +117,10 @@ class Image {
     height_ = height;
   }
 
+  void fill(T value) {
+    std::fill(data_.begin(), data_.end(), value);
+  }
+
   /// Access to the pixel located at (x, y) in image coordinate system where x
   /// is the variable for horizontal direction and y is one for vertical
   /// direction.  To access to the each channel value in the pixel (x, y),
