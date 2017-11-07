@@ -25,17 +25,20 @@ namespace sensors {
 /// Its image resolution is fixed at VGA (640 x 480 pixels) for all three
 /// images. The default depth sensing range is from 0.5 m to 5.0 m.
 ///
-/// Let `W` be the world coordinate system. In addition to `W`, there are three
+/// Let `W` be the world coordinate system. In addition to `W`, there are four
 /// more coordinate systems that are associated with an RgbdCamera. They are
 /// defined as follows:
 ///
 ///   * `B` - the camera's base coordinate system: X-forward, Y-left, and Z-up.
 ///
-///   * `C` - the camera's color sensor's optical coordinate system: `X-right`,
-///           `Y-down` and `Z-forward`.
+///   * `C` - the color sensor's optical coordinate system: `X-right`, `Y-down`
+///           and `Z-forward`.
 ///
-///   * `D` - the camera's depth sensor's optical coordinate system: `X-right`,
-///           `Y-down` and `Z-forward`.
+///   * `D` - the depth sensor's optical coordinate system: `X-right`, `Y-down`
+///           and `Z-forward`.
+///
+///   * `E` - the coordinate system of the structured light emitter for the
+///           depth sensing: `X-right`, `Y-down` and `Z-forward`.
 ///
 /// The origins of `C` and `D` (i.e., `Co` and `Do`, respectively) are offset
 /// from `B`'s origin (`Bo`) by 0 m in `B`'s X-axis, +0.02 m in `B`'s Y-axis,
@@ -203,6 +206,8 @@ class RgbdCamera final : public LeafSystem<double> {
   /// the RigidBodyTree.
   const InputPortDescriptor<double>& state_input_port() const;
 
+  const InputPortDescriptor<double>& random_noise_input_port() const;
+
   /// Returns the abstract valued output port that contains a RGBA image of the
   /// type ImageRgba8U.
   const OutputPort<double>& color_image_output_port() const;
@@ -233,9 +238,11 @@ class RgbdCamera final : public LeafSystem<double> {
   // TODO(sherm1) This should be the calculator for a cache entry containing
   // the VTK update that must be valid before outputting any image info. For
   // now it has to be repeated before each image output port calculation.
-  void UpdateModelPoses(const BasicVector<double>& input_vector) const;
+  void UpdateModelPoses(const BasicVector<double>& input_vector,
+                        const Eigen::Isometry3d& X_BC) const;
 
   const InputPortDescriptor<double>* state_input_port_{};
+  const InputPortDescriptor<double>* random_noise_input_port_{};
   const OutputPort<double>* color_image_port_{};
   const OutputPort<double>* depth_image_port_{};
   const OutputPort<double>* label_image_port_{};
@@ -259,6 +266,11 @@ class RgbdCamera final : public LeafSystem<double> {
   // The depth sensor's origin (`Do`) is offset by 0.02 m on the Y axis of
   // the RgbdCamera's base coordinate system (`B`).
   const Eigen::Isometry3d X_BD_{Eigen::Translation3d(0., 0.02, 0.) *
+        (Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) *
+         Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitY()))};
+  // The origin of emitter for depth sensor (`Eo`) is offset by -0.025 m on the
+  // Y axis of the RgbdCamera's base coordinate system (`B`).
+  const Eigen::Isometry3d X_BE_{Eigen::Translation3d(0., -0.025, 0.) *
         (Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) *
          Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitY()))};
 
@@ -292,6 +304,10 @@ class RgbdCameraDiscrete final : public systems::Diagram<double> {
     return get_input_port(input_port_state_);
   }
 
+  const InputPortDescriptor<double>& random_noise_input_port() const {
+    return get_input_port(input_port_random_noise_);
+  }
+
   /// @see RgbdCamera::color_image_output_port().
   const systems::OutputPort<double>& color_image_output_port() const {
     return get_output_port(output_port_color_image_);
@@ -317,6 +333,7 @@ class RgbdCameraDiscrete final : public systems::Diagram<double> {
   const double period_{};
 
   int input_port_state_{-1};
+  int input_port_random_noise_{-1};
   int output_port_color_image_{-1};
   int output_port_depth_image_{-1};
   int output_port_label_image_{-1};
