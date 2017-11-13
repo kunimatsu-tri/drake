@@ -192,6 +192,7 @@ drake_cc_library(
         "@vtk//:vtkCommonTransforms",
         "@vtk//:vtkFiltersGeneral",
         "@vtk//:vtkFiltersSources",
+        "@vtk//:vtkImagingSources",
         "@vtk//:vtkIOGeometry",
         "@vtk//:vtkIOImage",
         "@vtk//:vtkRenderingCore",
