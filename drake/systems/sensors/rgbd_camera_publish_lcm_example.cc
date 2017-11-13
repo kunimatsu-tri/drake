@@ -14,6 +14,7 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/primitives/random_source.h"
 #include "drake/systems/rendering/pose_stamped_t_pose_vector_translator.h"
 #include "drake/systems/sensors/image_to_lcm_image_array_t.h"
 #include "drake/systems/sensors/rgbd_camera.h"
@@ -54,7 +55,7 @@ DEFINE_string(sdf_dir, "",
               "The full path of directory where SDFs are located.");
 DEFINE_string(sdf_fixed, "sphere.sdf",
               "The filename for a SDF that contains fixed base objects.");
-DEFINE_string(sdf_floating, "box.sdf",
+DEFINE_string(sdf_floating, "bottle.sdf",
               "The filename for a SDF that contains floating base objects.");
 DEFINE_validator(sdf_dir, &ValidateDir);
 DEFINE_validator(sdf_fixed, &ValidateSdf);
@@ -110,8 +111,8 @@ int main() {
     config.depth_range_near = 0.01;
     config.depth_range_far = 1.;
   } else {
-    config.pos = Eigen::Vector3d(-1., 0., 1.);
-    config.rpy = Eigen::Vector3d(0., M_PI_4, 0.);
+    config.pos = Eigen::Vector3d(-1.2, 0., 0.2);
+    config.rpy = Eigen::Vector3d(0., M_PI_4 / 6., 0.);
     config.fov_y = M_PI_4;
     config.depth_range_near = 0.5;
     config.depth_range_far = 5.;
@@ -127,30 +128,38 @@ int main() {
       kCameraUpdatePeriod);
 
   auto image_to_lcm_image_array =
-      builder.template AddSystem<ImageToLcmImageArrayT>(
-          kColorCameraFrameName, kDepthCameraFrameName, kLabelCameraFrameName);
+      builder.AddSystem<ImageToLcmImageArrayT>(
+          kColorCameraFrameName, kDepthCameraFrameName, kLabelCameraFrameName,
+                                                        true);
   image_to_lcm_image_array->set_name("converter");
 
   ::drake::lcm::DrakeLcm lcm;
-  auto drake_viz = builder.template AddSystem<DrakeVisualizer>(
+  auto drake_viz = builder.AddSystem<DrakeVisualizer>(
       plant->get_rigid_body_tree(), &lcm);
   drake_viz->set_publish_period(kCameraUpdatePeriod);
 
-  auto image_array_lcm_publisher = builder.template AddSystem(
+  auto image_array_lcm_publisher = builder.AddSystem(
       lcm::LcmPublisherSystem::Make<robotlocomotion::image_array_t>(
           kImageArrayLcmChannelName, &lcm));
   image_array_lcm_publisher->set_name("publisher");
   image_array_lcm_publisher->set_publish_period(kCameraUpdatePeriod);
 
   rendering::PoseStampedTPoseVectorTranslator translator(kCameraBaseFrameName);
-  auto pose_lcm_publisher = builder.template AddSystem<lcm::LcmPublisherSystem>(
+  auto pose_lcm_publisher = builder.AddSystem<lcm::LcmPublisherSystem>(
       kPoseLcmChannelName, translator, &lcm);
   pose_lcm_publisher->set_name("pose_lcm_publisher");
   pose_lcm_publisher->set_publish_period(kCameraUpdatePeriod);
 
+  auto random_noise = builder.AddSystem<GaussianRandomSource>(
+      640 * 480, 0.0333);
+
   builder.Connect(
       plant->get_output_port(0),
       rgbd_camera->state_input_port());
+
+  builder.Connect(
+      random_noise->get_output_port(0),
+      rgbd_camera->random_noise_input_port());
 
   builder.Connect(
       plant->get_output_port(0),
@@ -164,9 +173,9 @@ int main() {
       rgbd_camera->depth_image_output_port(),
       image_to_lcm_image_array->depth_image_input_port());
 
-  builder.Connect(
-      rgbd_camera->label_image_output_port(),
-      image_to_lcm_image_array->label_image_input_port());
+  // builder.Connect(
+  //     rgbd_camera->label_image_output_port(),
+  //     image_to_lcm_image_array->label_image_input_port());
 
   builder.Connect(
       image_to_lcm_image_array->image_array_t_msg_output_port(),
@@ -181,7 +190,7 @@ int main() {
   auto simulator = std::make_unique<systems::Simulator<double>>(
       *diagram, std::move(context));
 
-  simulator->set_publish_at_initialization(true);
+  simulator->set_publish_at_initialization(false);
   simulator->set_publish_every_time_step(false);
   simulator->Initialize();
   simulator->StepTo(FLAGS_duration);
