@@ -179,6 +179,7 @@ drake_cc_library(
     srcs = ["rgbd_renderer.cc"],
     hdrs = [
         "color_palette.h",
+        "depth_shaders.h",
         "rgbd_renderer.h",
     ],
     deps = [
@@ -192,7 +193,6 @@ drake_cc_library(
         "@vtk//:vtkCommonTransforms",
         "@vtk//:vtkFiltersGeneral",
         "@vtk//:vtkFiltersSources",
-        "@vtk//:vtkImagingSources",
         "@vtk//:vtkIOGeometry",
         "@vtk//:vtkIOImage",
         "@vtk//:vtkRenderingCore",
