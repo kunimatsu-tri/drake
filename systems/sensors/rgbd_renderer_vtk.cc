@@ -128,6 +128,7 @@ class RgbdRendererVTK::Impl : private ModuleInitVtkRenderingOpenGL2 {
 
   RgbdRendererVTK* parent_ = nullptr;
 
+  bool terrain_added_ = false;
   vtkNew<vtkActor> terrain_actor_;
   // An array of maps which take pairs of a body index in RBT and a vector of
   // vtkSmartPointer to vtkActor. The each vtkActor corresponds to an visual
@@ -183,6 +184,8 @@ void RgbdRendererVTK::Impl::ImplAddFlatTerrain() {
        MakeVtkPointerArray(color_depth_renderer_, label_renderer_)) {
     renderer->AddActor(terrain_actor_.GetPointer());
   }
+
+  terrain_added_ = true;
 }
 
 void RgbdRendererVTK::Impl::ImplUpdateVisualPose(const Eigen::Isometry3d& X_WV,
@@ -196,6 +199,9 @@ void RgbdRendererVTK::Impl::ImplUpdateVisualPose(const Eigen::Isometry3d& X_WV,
     auto& actor = id_object_map.at(body_id).at(visual_id);
     actor->SetUserTransform(vtk_X_WV);
   }
+
+  if (terrain_added_)
+    terain_actor_->SetUserTransform(vtk_X_WV);
 }
 
 void RgbdRendererVTK::Impl::ImplUpdateViewpoint(
