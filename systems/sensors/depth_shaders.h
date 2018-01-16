@@ -36,7 +36,6 @@ constexpr char kDepthVS[] =
 /// The reason is that we need to set one to alpha channel so that the rendered
 /// "image" will be opaque. Otherwise, we will have different colors from what
 /// we output here, thus expect, in the end.
-
 constexpr char kDepthFS[] =
     "//VTK::System::Dec\n"  // Always start with this line.
     "//VTK::Output::Dec\n"  // Always have this line in your FS.
@@ -90,14 +89,19 @@ constexpr char kDepthFS[] =
     "\n"
     "void main () {\n"
     "  float z = -vertexVCVSOutput.z;  // In meters.\n"
-    "  // Converting meters to [0, 1].\n"
-    "  float z_norm = (z - z_near) / (z_far - z_near);\n"
     "  vec3 res;\n"
+    "\n"
+    "  float angle =\n"
+    "      dot(normalVCVSOutput, normalize(-vertexVCVSOutput.xyz));\n"
+    "  const float kAngleThresh = 0.17365; // Equals to cos(radians(80)).\n"
+    "\n"
     "  if (z >= z_far) {\n"
     "    res = vec3(1, 1, 1);\n"
-    "  } else if (z <= z_near) {\n"
+    "  } else if (z <= z_near || angle < kAngleThresh ) {\n"
     "    res = vec3(0, 0, 0);\n"
     "  } else {\n"
+    "    // Converting meters to [0, 1].\n"
+    "    float z_norm = (z - z_near) / (z_far - z_near);\n"
     "    res = PackFloatToVec3i(z_norm);\n"
     "  }\n"
     "  color_out = vec4(res,  1.);"
