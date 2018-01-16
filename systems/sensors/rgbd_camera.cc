@@ -183,17 +183,20 @@ void RgbdCamera::OutputPoseVector(
 }
 
 void RgbdCamera::UpdateModelPoses(
-    const BasicVector<double>& input_vector) const {
+    const BasicVector<double>& input_vector,
+    const Eigen::Isometry3d& X_BR) const {
   const Eigen::VectorXd q =
       input_vector.CopyToVector().head(tree_.get_num_positions());
   KinematicsCache<double> cache = tree_.doKinematics(q);
 
-  if (!camera_fixed_) {
-    // Updates camera poses.
-    Eigen::Isometry3d X_WB =
-      tree_.CalcFramePoseInWorldFrame(cache, frame_);
-    renderer_->UpdateViewpoint(X_WB * X_BC_);
+  Eigen::Isometry3d X_WB;
+  if (camera_fixed_) {
+    X_WB = X_WB_initial_;
+  } else {
+    X_WB =  tree_.CalcFramePoseInWorldFrame(cache, frame_);
   }
+
+  renderer_->UpdateViewpoint(X_WB * X_BR);
 
   // Updates body poses.
   for (const auto& body : tree_.bodies) {
@@ -217,17 +220,59 @@ void RgbdCamera::OutputColorImage(const Context<double>& context,
   const BasicVector<double>* input_vector =
       this->EvalVectorInput(context, state_input_port_->get_index());
 
-  UpdateModelPoses(*input_vector);
+  UpdateModelPoses(*input_vector, X_BC_);
   renderer_->RenderColorImage(color_image);
 }
+
+namespace {
+void Warp(ImageDepth32F* image, const CameraInfo& camera_info,
+          const Eigen::Isometry3d& X_DS) {
+  const double fx = camera_info.focal_x();
+  const double fx_inv = 1. / fx;
+  const double fy_inv = 1. / camera_info.focal_y();
+  const double cx = camera_info.center_x();
+  const double cy = camera_info.center_y();
+  const int width = camera_info.width();
+  const int height = camera_info.height();
+
+  ImageDepth32F in_image(width, height);
+  memcpy(in_image.at(0, 0), image->at(0, 0), image->size() * 4);
+  image->fill(std::numeric_limits<float>::quiet_NaN());
+  Eigen::Vector4d p;
+  p[3] = 1.;
+  for (int v = 0; v < height; ++v) {
+    for (int u = 0; u < width; ++u) {
+      float z = in_image.at(u, v)[0];
+        if (z != InvalidDepth::kTooClose &&
+            z != InvalidDepth::kTooFar) {
+          p[0] = z * (u - cx) * fx_inv;
+          p[1] = z * (v - cy) * fy_inv;
+          p[2] = z;
+
+          const Eigen::Vector4d& cp = X_DS * p;
+          const int uu = cp[0] / cp[2] * fx + cx;
+          if (0 <= uu && uu < width) {
+            if (std::isnan(image->at(uu, v)[0]) || image->at(uu, v)[0] > cp[2])
+              image->at(uu, v)[0] = cp[2];
+          }
+        }
+    }
+  }
+}
+}  // namespace
 
 void RgbdCamera::OutputDepthImage(const Context<double>& context,
                                   ImageDepth32F* depth_image) const {
   const BasicVector<double>* input_vector =
       this->EvalVectorInput(context, state_input_port_->get_index());
 
-  UpdateModelPoses(*input_vector);
+  // Renders depth image from the emitter's view point first.
+  UpdateModelPoses(*input_vector, X_BE_);
   renderer_->RenderDepthImage(depth_image);
+  // Then, warps it to the depth camera's view point.
+  // TODO(kunimatsu-tri, SeanCurtis-TRI) Move this to fragment shader program
+  // once multi
+  Warp(depth_image, depth_camera_info_, X_BD_.inverse() * X_BE_);
 }
 
 void RgbdCamera::OutputLabelImage(const Context<double>& context,
@@ -235,7 +280,7 @@ void RgbdCamera::OutputLabelImage(const Context<double>& context,
   const BasicVector<double>* input_vector =
       this->EvalVectorInput(context, state_input_port_->get_index());
 
-  UpdateModelPoses(*input_vector);
+  UpdateModelPoses(*input_vector, X_BC_);
   renderer_->RenderLabelImage(label_image);
 }
 
