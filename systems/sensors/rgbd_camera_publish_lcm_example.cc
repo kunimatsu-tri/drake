@@ -11,6 +11,7 @@
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -122,8 +123,8 @@ int main() {
     config.depth_range_near = 0.01;
     config.depth_range_far = 1.;
   } else {
-    config.pos = Eigen::Vector3d(-1., 0., 1.);
-    config.rpy = Eigen::Vector3d(0., M_PI_4, 0.);
+    config.pos = Eigen::Vector3d(-0.4, 0., 1.);
+    config.rpy = Eigen::Vector3d(0., M_PI_2 * 0.8, 0.);
     config.fov_y = M_PI_4;
     config.depth_range_near = 0.5;
     config.depth_range_far = 5.;
@@ -196,6 +197,12 @@ int main() {
   simulator->set_publish_at_initialization(true);
   simulator->set_publish_every_time_step(false);
   simulator->Initialize();
+
+  simulator->reset_integrator<RungeKutta2Integrator<double>>(
+      *diagram, 0.001, &simulator->get_mutable_context());
+  simulator->get_mutable_integrator()->set_maximum_step_size(0.001);
+  simulator->get_mutable_integrator()->set_fixed_step_mode(true);
+
   simulator->StepTo(FLAGS_duration);
 
   return 0;
