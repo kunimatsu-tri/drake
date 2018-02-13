@@ -1,6 +1,8 @@
 #include <memory>
+#include <random>
 #include <string>
 
+#include <fmt/format.h>
 #include <gflags/gflags.h>
 #include <vtkImageData.h>
 #include <vtkNew.h>
@@ -8,6 +10,7 @@
 
 #include "drake/common/unused.h"
 #include "drake/lcm/drake_lcm.h"
+#include "drake/math/roll_pitch_yaw.h"
 #include "drake/multibody/parsers/sdf_parser.h"
 #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
@@ -25,6 +28,40 @@ using std::string;
 
 using drake::multibody::joints::kQuaternion;
 using drake::multibody::joints::kFixed;
+
+
+constexpr double kCameraUpdatePeriod{0.01};
+
+bool ValidateSdf(const char* flagname, const std::string& filename) {
+  if (filename.substr(filename.find_last_of(".") + 1) == "sdf") {
+    return true;
+  }
+  cout << "Invalid filename for --" << flagname << ": " << filename << endl;
+  return false;
+}
+
+bool ValidateDir(const char* flagname, const std::string& dir) {
+  if (dir.empty()) {
+    cout << "Invalid directory for --" << flagname << ": " << dir << endl;
+    return false;
+  }
+  return true;
+}
+
+DEFINE_bool(show_window, true,
+            "If true, RgbdCamera opens windows for displaying rendering "
+            "context.");
+DEFINE_double(duration, 1., "Total duration of the simulation in secondes.");
+DEFINE_int32(num, 0, "Start ID of SDF.");
+DEFINE_string(sdf_dir, "",
+              "The full path of directory where SDFs are located.");
+DEFINE_string(sdf_fixed, "sphere.sdf",
+              "The filename for a SDF that contains fixed base objects.");
+DEFINE_string(sdf_floating, "box.sdf",
+              "The filename for a SDF that contains floating base objects.");
+DEFINE_validator(sdf_dir, &ValidateDir);
+DEFINE_validator(sdf_fixed, &ValidateSdf);
+DEFINE_validator(sdf_floating, &ValidateSdf);
 
 namespace drake {
 namespace systems {
@@ -111,49 +148,6 @@ void SaveLabelToFile(const string& filepath, const Image<kPixelType>& image) {
   writer->Write();
 };
 
-bool ValidateSdf(const char* flagname, const std::string& filename) {
-  if (filename.substr(filename.find_last_of(".") + 1) == "sdf") {
-    return true;
-  }
-  cout << "Invalid filename for --" << flagname << ": " << filename << endl;
-  return false;
-}
-
-bool ValidateDir(const char* flagname, const std::string& dir) {
-  if (dir.empty()) {
-    cout << "Invalid directory for --" << flagname << ": " << dir << endl;
-    return false;
-  }
-  return true;
-}
-
-DEFINE_bool(show_window, true,
-            "If true, RgbdCamera opens windows for displaying rendering "
-            "context.");
-DEFINE_double(duration, 1., "Total duration of the simulation in secondes.");
-DEFINE_int32(num, 0, "Start ID of SDF.");
-DEFINE_string(sdf_dir, "",
-              "The full path of directory where SDFs are located.");
-DEFINE_string(sdf_fixed, "sphere.sdf",
-              "The filename for a SDF that contains fixed base objects.");
-DEFINE_string(sdf_floating, "box.sdf",
-              "The filename for a SDF that contains floating base objects.");
-DEFINE_validator(sdf_dir, &ValidateDir);
-DEFINE_validator(sdf_fixed, &ValidateSdf);
-DEFINE_validator(sdf_floating, &ValidateSdf);
-
-constexpr double kCameraUpdatePeriod{0.01};
-
-struct CameraConfig {
-  Eigen::Vector3d pos;
-  Eigen::Vector3d rpy;
-  double fov_y{};
-  double depth_range_near{};
-  double depth_range_far{};
-};
-
-}  // anonymous namespace
-
 bool CheckEmpty(Image<PixelType::kLabel16I>& label) {
   const int width = label.width();
   const int height = label.height();
@@ -170,7 +164,15 @@ bool CheckEmpty(Image<PixelType::kLabel16I>& label) {
   return true; // Yes, it's empty.
 }
 
-void Generate(int num) {
+}  // anonymous namespace
+
+// Remember calling srand() with a proper seed each time you start your program.
+double Rand(double min, double max) {
+  double val = static_cast<double>(rand()) / RAND_MAX;
+  return min + val * (max - min);
+}
+
+void Generate(int num, std::ofstream& out) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
       FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
@@ -198,21 +200,22 @@ void Generate(int num) {
   model_parameters.v_stiction_tolerance = 0.01;  // m/s
   plant->set_contact_model_parameters(model_parameters);
 
-  // Adds an RgbdCamera at a fixed pose.
-  CameraConfig config;
-  config.pos = Eigen::Vector3d(-0.4, 0., 1.);
-  config.rpy = Eigen::Vector3d(0., M_PI_2 * 0.8, 0.);
-  config.fov_y = M_PI_4;
-  config.depth_range_near = 0.5;
-  config.depth_range_far = 5.;
+  double x = -0.4;  // Rand(-0.4, -0.3);
+  double y = 0.;  // Rand(-0.1, 0.1);
+  double z = 1.;  // Rand(0.9, 1.1);
+  double roll = 0.;  // Rand(-0.2, 0.2);
+  double pitch = M_PI_2 * 0.8;  // Rand(M_PI_2 * 0.8 - 0.1, M_PI_2 * 0.8 + 0.1);
+  double yaw = 0.;  // Rand(-0.2, 0.2);
 
   auto rgbd_camera =
-      builder.AddSystem<RgbdCameraDiscrete>(
-          std::make_unique<RgbdCamera>(
+      builder.AddSystem<sensors::RgbdCameraDiscrete>(
+          std::make_unique<sensors::RgbdCamera>(
               "rgbd_camera", plant->get_rigid_body_tree(),
-              config.pos, config.rpy,
-              config.depth_range_near, config.depth_range_far,
-              config.fov_y, FLAGS_show_window),
+              Eigen::Vector3d(x, y, z),
+              Eigen::Vector3d(roll, pitch, yaw),
+              // Eigen::Vector3d(-0.4, 0., 1.),
+              // Eigen::Vector3d(0., M_PI_2 * 0.8, 0.),
+              0.5, 5.0, M_PI_4, FLAGS_show_window),
       kCameraUpdatePeriod);
 
   ::drake::lcm::DrakeLcm lcm;
@@ -230,6 +233,7 @@ void Generate(int num) {
 
   builder.ExportOutput(rgbd_camera->color_image_output_port());
   builder.ExportOutput(rgbd_camera->label_image_output_port());
+  builder.ExportOutput(plant->kinematics_results_output_port());
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
@@ -262,20 +266,57 @@ void Generate(int num) {
         output->GetMutableData(0)->GetMutableValue<ImageRgba8U>();
     SaveToFile<PixelType::kRgba8U>(
         std::string("/home/kunimatsu/images/rgb") + n + ".png", sys_rgb);
+
+    auto quat =
+        math::RollPitchYawToQuaternion(Eigen::Vector3d(roll, pitch, yaw));
+    string result = "";
+    result += fmt::format("- sdf: \"{}\"\n", "silverware" + n + ".sdf");
+    result += fmt::format("  rgb: \"{}\"\n", "rgb" + n + ".png");
+    result += fmt::format("  label: \"{}\"\n", "label" + n + ".png");
+    result += fmt::format("  camera_pose:\n");
+    result += fmt::format("    position: [{}, {}, {}]\n", x, y, z);
+    result += fmt::format("    orientation: [{}, {}, {}, {}]\n",
+                          quat.w(), quat.x(), quat.y(), quat.z());
+    result += fmt::format("  objects:\n");
+    auto kinematics =
+        output->GetMutableData(2)->GetMutableValue<KinematicsResults<double>>();
+    for (const auto& body : plant->get_rigid_body_tree().bodies) {
+      string body_name = body->get_name();
+      if (body_name == "world")
+        continue;
+      body_name.erase(
+          remove_if(body_name.begin(), body_name.end(),
+                    [](char c) { return !isalpha(c); }),
+          body_name.end());
+
+      auto X = kinematics.get_pose_in_world(*body);
+      auto p = X.translation();
+      auto q = Eigen::Quaterniond(X.linear());
+      result += fmt::format("    - id: {}\n", body->get_body_index());
+      result += fmt::format("      category: \"{}\"\n", body_name);
+      result += fmt::format("      position: [{}, {}, {}]\n",
+                            p.x(), p.y(), p.z());
+      result += fmt::format("      orientation: [{}, {}, {}, {}]\n",
+                            q.w(), q.x(), q.y(), q.z());
+    }
+    cout << result << endl;
+    out << result;
   }
 }
-
 
 int main() {
   drake::unused(sdf_dir_validator_registered);
   drake::unused(sdf_fixed_validator_registered);
   drake::unused(sdf_floating_validator_registered);
 
-  for (int i = FLAGS_num; i < 10000; ++i) {
+  std::ofstream out("/home/kunimatsu/output.yaml");
+
+  for (int i = FLAGS_num; i < 100; ++i) {
     std::cout << "Simulating No. " << i << "." << std::endl;
-    Generate(i);
+    Generate(i, out);
   }
 
+  out.close();
   return 0;
 }
 
@@ -284,6 +325,7 @@ int main() {
 }  // namespace drake
 
 int main(int argc, char* argv[]) {
+  srand(time(NULL));  // For random().
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return drake::systems::sensors::main();
 }
