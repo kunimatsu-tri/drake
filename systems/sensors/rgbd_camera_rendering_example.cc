@@ -309,11 +309,11 @@ int main() {
   drake::unused(sdf_fixed_validator_registered);
   drake::unused(sdf_floating_validator_registered);
 
-  std::ofstream out("/home/kunimatsu/output.yaml");
+  std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
-  for (int i = FLAGS_num; i < 100; ++i) {
-    std::cout << "Simulating No. " << i << "." << std::endl;
-    Generate(i, out);
+  for (int i = 0; i < 1000; ++i) {
+    std::cout << "Simulating No. " << FLAGS_num + i << "." << std::endl;
+    Generate(FLAGS_num + i, out);
   }
 
   out.close();
