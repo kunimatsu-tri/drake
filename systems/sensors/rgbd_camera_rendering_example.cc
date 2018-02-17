@@ -311,9 +311,9 @@ int main() {
 
   std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
-  for (int i = 0; i < 1000; ++i) {
-    std::cout << "Simulating No. " << FLAGS_num + i << "." << std::endl;
-    Generate(FLAGS_num + i, out);
+  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
+    std::cout << "Simulating No. " << i << "." << std::endl;
+    Generate(i, out);
   }
 
   out.close();
