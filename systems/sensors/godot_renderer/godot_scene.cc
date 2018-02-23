@@ -8,7 +8,7 @@
 
 #include <editor/editor_node.h>
 
-// stuff-out Ggodot functions that we dont link
+// stub-out Godot functions that we don't link
 void EditorNode::progress_add_task(const String &p_task, const String &p_label, int p_steps, bool p_can_cancel ) {}
 void EditorNode::progress_end_task(const String &p_task) {}
 
@@ -99,7 +99,8 @@ Ref<Image> GodotScene::Capture() {
 }
 
 void GodotScene::ApplyDepthShader() {
-  for (const auto& [id, materials]: instance_materials_) {
+  for (const auto pair : instance_materials_) {
+    int id = pair.first;
     MeshInstance *instance =
         Object::cast_to<MeshInstance>(scene_root_->get_child(id));
     Ref<Mesh> mesh = instance->get_mesh();
@@ -111,7 +112,9 @@ void GodotScene::ApplyDepthShader() {
 }
 
 void GodotScene::ApplyMaterialShader() {
-  for (const auto& [id, materials]: instance_materials_) {
+  for (const auto pair : instance_materials_) {
+    int id = pair.first;
+    const MaterialList& materials = pair.second;
     MeshInstance *instance =
         Object::cast_to<MeshInstance>(scene_root_->get_child(id));
     for (size_t i = 0; i < materials.size(); ++i)
