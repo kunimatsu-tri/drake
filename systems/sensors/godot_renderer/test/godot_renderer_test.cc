@@ -11,9 +11,11 @@
 
 using namespace godotvis;
 
-std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
-std::string gltf_path = "/home/duynguyen/git/glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
-std::string save_path = "/home/duynguyen/Downloads/godot/";
+std::string user_root = "/home/sean/";
+std::string godot_root = user_root + "code/";
+std::string path = godot_root + "godot-demo-projects/3d/material_testers/";
+std::string gltf_path = godot_root + "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
+std::string save_path = user_root + "Downloads/godot/";
 
 void test_GLTF() {
   GodotRenderer renderer(1280, 960);
