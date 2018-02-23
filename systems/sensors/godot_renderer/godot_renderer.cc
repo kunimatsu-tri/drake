@@ -1,5 +1,6 @@
 #include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 #include "modules/jpg/register_types.h"
+#include "modules/hdr/register_types.h"
 
 namespace godotvis {
 
@@ -108,7 +109,9 @@ void GodotRenderer::InitGodot() {
   VisualServer::get_singleton()->set_default_clear_color(clear);
 
   register_scene_types();
+  // Register image loaders
   register_jpg_types();
+  register_hdr_types();
 
   arvr_server_ = memnew(ARVRServer); // Needed for VisualServer::draw(), in
                                      // VisualServerViewport::draw_viewports()
@@ -126,6 +129,7 @@ void GodotRenderer::CleanUpGodot() {
     memdelete(physics_server_);
 
   // CleanUp
+  unregister_hdr_types();
   unregister_jpg_types();
   unregister_scene_types();
   unregister_server_types();

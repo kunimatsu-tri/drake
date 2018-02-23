@@ -101,7 +101,9 @@ _PACKAGES = [
     "thirdparty/misc/**",
     "thirdparty/zstd/**",
     "thirdparty/jpeg-compressor/**",
+    "thirdparty/tinyexr/**",
     "modules/jpg/**",
+    "modules/hdr/**",
 ]
 
 # Compile a library with everything from Godot that we need.

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <core/io/image_loader.h>
 #include <editor/import/editor_scene_importer_gltf.h>
 #include <servers/visual/visual_server_global.h>
 
@@ -33,10 +34,27 @@ void GodotScene::Initialize() {
   InitDepthShader();
 }
 
-void GodotScene::SetupEnvironment(const std::string &env_filename) {
+void GodotScene::SetupEnvironment(const std::string& env_filename) {
   // Load skybox resource
   String skyfilename{env_filename.c_str()};
+#if 1
+  Ref<Image> image;
+  image.instance();
+  Error err = ImageLoader::load_image(skyfilename, image);
+  if (err != OK) {
+    // TODO(SeanCurtis-TRI): Create default environment and log error.
+    std::cerr << "Unable to load: " << env_filename << "\n";
+    return;
+  }
+
+  Ref<ImageTexture> sky_texture;
+  sky_texture.instance();
+  sky_texture->create_from_image(image);
+#else
+  // TODO(SeanCurtis-TRI): Enable this when our image loader is tied into
+  // ResourceLoader.
   Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
+#endif
   // TODO: This will be freed by Environment. Also, what's the correct way to
   // create a Ref<Sky>?
   PanoramaSky *sky = memnew(PanoramaSky);
