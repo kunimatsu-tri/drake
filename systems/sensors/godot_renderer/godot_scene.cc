@@ -276,31 +276,29 @@ GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) 
   material->set_albedo(Color(1.0, 1.0, 1.0, 1.0));
 
   // TODO: remove this hack
-  String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
-  Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
-  material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-  material->set_metallic(0.59);
-  material->set_specular(0.5);
-  material->set_roughness(0.4);
-  Ref<Texture> normal_tex = ResourceLoader::load(path + "aluminium_normal.png");
-  material->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, true);
-  material->set_texture(SpatialMaterial::TEXTURE_NORMAL, normal_tex);
-  material->set_normal_scale(0.21);
-  material->set_feature(SpatialMaterial::FEATURE_ANISOTROPY, true);
-  material->set_anisotropy(0.99);
+//  String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
+//  Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
+//  material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+  material->set_metallic(1);
+  material->set_specular(0);
+  material->set_roughness(0.3);
+//  Ref<Texture> normal_tex = ResourceLoader::load(path + "aluminium_normal.png");
+//  material->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, true);
+//  material->set_texture(SpatialMaterial::TEXTURE_NORMAL, normal_tex);
+//  material->set_normal_scale(0.21);
+//  material->set_feature(SpatialMaterial::FEATURE_ANISOTROPY, true);
+//  material->set_anisotropy(0.99);
+
   // IMPORTANT: This calls to SpatialMaterial::_update_shader(). Without this
   // materials wont' work
   // Godot sets up so that this is called in SceneTree::call_idle_call_backs()
   // Not sure if we need to do this as an idle callback...
   SpatialMaterial::flush_changes();
-  mesh->surface_set_material(0, material);
-  mesh->surface_set_material(1, material);
-  mesh->surface_set_material(2, material);
-  mesh->surface_set_material(3, material);
-
   MaterialList materials;
-  for(int i = 0; i<4; ++i)
+  for (int i = 0; i < mesh->get_surface_count(); ++i) {
+    mesh->surface_set_material(i, material);
     materials.push_back(material);
+  }
 
   return GodotScene::MeshMaterialsPair{mesh, materials};
 }

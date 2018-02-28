@@ -1,10 +1,11 @@
+#include <iomanip>
+#include <iostream>
 #include <limits.h>
 #include <locale.h>
+#include <sstream>
 #include <stdlib.h>
 #include <unistd.h>
-#include <iostream>
 #include <vector>
-#include <iostream>
 
 #include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
@@ -32,6 +33,43 @@ void test_GLTF() {
   renderer.Draw();
   Ref<Image> image = scene.Capture();
   image->save_png((save_path + "gltf.png").c_str());
+  scene.Finish();
+  image.unref();
+}
+
+void RenderFork() {
+  GodotRenderer renderer(1280, 960);
+  GodotScene scene;
+  scene.Initialize();
+  scene.SetupEnvironment(path + "lobby.hdr");
+  scene.AddCamera(65.0, 0.1, 100.0);
+  Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
+  camera_pose.translation() = Eigen::Vector3d(0., 0., 3.);
+  scene.SetCameraPose(camera_pose);
+  scene.set_viewport_size(1280, 960);
+
+  int id = scene.AddMeshInstance("/home/sean/code/godot_projects/fork.mesh");
+  Eigen::Isometry3d pose{Eigen::AngleAxisd(M_PI/4, Eigen::Vector3d{1, 1, 1})};
+  scene.SetInstanceScale(id, 0.25, 0.25, 0.25);
+
+  const double theta_0 = 0;
+  const double theta_N = 2 * M_PI;
+  const int N = 120;
+  const double d_theta = (theta_N - theta_0) / (N - 1);
+  Ref<Image> image;
+  for (int i = 0; i < N; ++i) {
+    pose.linear() = Eigen::AngleAxisd(i * d_theta, Eigen::Vector3d{1, 1, 1}).matrix();
+    pose.translation() << 0, 0, -3;
+    scene.SetInstancePose(id, pose);
+    scene.FlushTransformNotifications();
+    renderer.Draw();
+    image = scene.Capture();
+    std::stringstream ss;
+    ss << save_path << "fork_";
+    ss << std::setw(4) << std::setfill('0') << i << ".png";
+    image->save_png(ss.str().c_str());
+  }
+
   scene.Finish();
   image.unref();
 }
@@ -126,6 +164,7 @@ void test_primitives() {
 }
 
 int main(int argc, char *argv[]) {
-  test_GLTF();
+  RenderFork();
+//  test_GLTF();
   return 0; //os_.get_exit_code();
 }
