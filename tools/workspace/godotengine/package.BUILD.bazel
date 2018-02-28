@@ -128,6 +128,12 @@ cc_library(
         x + "/*.h"
         for x in _PACKAGES
     ] + [
+        x + "/*.hpp"
+        for x in _PACKAGES
+    ] + [
+        x + "/*.h"
+        for x in _PACKAGES
+    ] + [
         x + "/*.inc"
         for x in _PACKAGES
     ] + [
