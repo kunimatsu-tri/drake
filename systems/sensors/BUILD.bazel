@@ -254,6 +254,28 @@ drake_cc_binary(
     ],
 )
 
+drake_cc_binary(
+    name = "rgbd_camera_rendering_example",
+    srcs = [
+        "rgbd_camera_rendering_example.cc",
+    ],
+    deps = [
+        ":image",
+        ":rgbd_camera",
+        "//drake/common:unused",
+        "//drake/lcm",
+        "//drake/multibody:rigid_body_tree",
+        "//drake/multibody:rigid_body_tree_construction",
+        "//drake/multibody/parsers",
+        "//drake/multibody/rigid_body_plant",
+        "//drake/multibody/rigid_body_plant:drake_visualizer",
+        "//drake/systems/analysis:simulator",
+        "//drake/systems/lcm",
+        "@gflags",
+        "@vtk//:vtkIOImage",
+    ],
+)
+
 drake_cc_library(
     name = "rotary_encoders",
     srcs = ["rotary_encoders.cc"],
