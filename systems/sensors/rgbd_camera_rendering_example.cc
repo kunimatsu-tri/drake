@@ -62,6 +62,9 @@ DEFINE_string(sdf_floating, "box.sdf",
 DEFINE_validator(sdf_dir, &ValidateDir);
 DEFINE_validator(sdf_fixed, &ValidateSdf);
 DEFINE_validator(sdf_floating, &ValidateSdf);
+DEFINE_string(output_dir, "/home/sean/Pictures/godot/",
+              "The full path to the directory into which images will be "
+              "written");
 
 namespace drake {
 namespace systems {
@@ -260,12 +263,12 @@ void Generate(int num, std::ofstream& out) {
 
   if (!CheckEmpty(sys_label)) {
     SaveLabelToFile<PixelType::kLabel16I>(
-        std::string("/home/kunimatsu/images/label") + n + ".png", sys_label);
+        std::string(FLAGS_output_dir) + "label" + n + ".png", sys_label);
 
     auto sys_rgb =
         output->GetMutableData(0)->GetMutableValue<ImageRgba8U>();
     SaveToFile<PixelType::kRgba8U>(
-        std::string("/home/kunimatsu/images/rgb") + n + ".png", sys_rgb);
+        std::string(FLAGS_output_dir) + "rgb" + n + ".png", sys_rgb);
 
     auto quat =
         math::RollPitchYawToQuaternion(Eigen::Vector3d(roll, pitch, yaw));
