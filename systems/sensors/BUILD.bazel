@@ -178,12 +178,14 @@ drake_cc_library(
     name = "rgbd_renderer",
     srcs = [
         "rgbd_renderer.cc",
+        "rgbd_renderer_godot.cc",
         "rgbd_renderer_vtk.cc",
     ],
     hdrs = [
         "color_palette.h",
         "depth_shaders.h",
         "rgbd_renderer.h",
+        "rgbd_renderer_godot.h",
         "rgbd_renderer_vtk.h",
     ],
     deps = [
@@ -191,6 +193,7 @@ drake_cc_library(
         ":vtk_util",
         "//drake/common",
         "//drake/multibody/shapes",
+        "//drake/systems/sensors/godot_renderer",
         "@eigen",
         "@vtk//:vtkCommonCore",
         "@vtk//:vtkCommonDataModel",
@@ -513,10 +516,10 @@ drake_cc_googletest(
     deps = [
         ":rgbd_renderer",
         ":rgbd_renderer_test_util",
-        "//drake/systems/sensors/godot_renderer:godot_renderer",
         "//drake/common:find_resource",
         "//drake/common/test_utilities:eigen_matrix_compare",
         "//drake/math:geometric_transform",
+        "//drake/systems/sensors/godot_renderer",
     ],
 )
 

@@ -12,15 +12,26 @@ package(default_visibility = ["//visibility:public"])
 
 drake_cc_library(
     name = "godot_renderer",
-    hdrs = glob(["*.h", "*.inl"]),
-    srcs = glob(["*.cc"]),
+    srcs = [
+        "godot_renderer.cc",
+        "godot_scene.cc",
+        "os_dummy.cc",
+    ],
+    hdrs = [
+        "godot_renderer.h",
+        "godot_scene.h",
+        "os_dummy.h",
+    ],
     #linkopts = ["-lglfw", "-ldl", "-lpng", "-lz"],
     linkopts = ["-lglfw"],
+    visibility = ["//visibility:public"],
     deps = select({
-        "//conditions:default": ["@godotengine", "@eigen"],
+        "//conditions:default": [
+            "@godotengine",
+            "@eigen",
+        ],
         "//tools/cc_toolchain:apple": [],
     }),
-    visibility=["//visibility:public"],
 )
 
 drake_cc_googletest(

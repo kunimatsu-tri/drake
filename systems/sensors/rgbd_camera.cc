@@ -5,13 +5,19 @@
 
 #include <Eigen/Dense>
 
+#define DRAKE_RGBD_GODOT
+
 #include "drake/math/roll_pitch_yaw.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/zero_order_hold.h"
 #include "drake/systems/rendering/pose_vector.h"
 #include "drake/systems/sensors/camera_info.h"
 #include "drake/systems/sensors/image.h"
+#ifdef DRAKE_RGBD_GODOT
+#include "drake/systems/sensors/rgbd_renderer_godot.h"
+#else
 #include "drake/systems/sensors/rgbd_renderer_vtk.h"
+#endif
 
 namespace drake {
 namespace systems {
@@ -70,11 +76,19 @@ RgbdCamera::RgbdCamera(const std::string& name,
       X_WB_initial_(
           Eigen::Translation3d(position[0], position[1], position[2]) *
           Eigen::Isometry3d(math::rpy2rotmat(orientation))),
+#ifdef DRAKE_RGBD_GODOT
+      renderer_(new RgbdRendererGodot(
+          RenderingConfig{kImageWidth, kImageHeight, fov_y, z_near, z_far,
+                          show_window},
+          Eigen::Translation3d(position[0], position[1], position[2]) *
+              Eigen::Isometry3d(math::rpy2rotmat(orientation)) * X_BC_)) {
+#else
       renderer_(new RgbdRendererVTK(
           RenderingConfig{kImageWidth, kImageHeight, fov_y, z_near, z_far,
                           show_window},
           Eigen::Translation3d(position[0], position[1], position[2]) *
               Eigen::Isometry3d(math::rpy2rotmat(orientation)) * X_BC_)) {
+#endif
   Init(name);
 }
 
@@ -87,10 +101,17 @@ RgbdCamera::RgbdCamera(const std::string& name,
       camera_fixed_(false),
       color_camera_info_(kImageWidth, kImageHeight, fov_y),
       depth_camera_info_(kImageWidth, kImageHeight, fov_y),
+#ifdef DRAKE_RGBD_GODOT
+      renderer_(new RgbdRendererGodot(
+          RenderingConfig{kImageWidth, kImageHeight, fov_y, z_near, z_far,
+                          show_window},
+          Eigen::Isometry3d::Identity())) {
+#else
       renderer_(
           new RgbdRendererVTK(RenderingConfig{kImageWidth, kImageHeight, fov_y,
                                               z_near, z_far, show_window},
                               Eigen::Isometry3d::Identity())) {
+#endif
   Init(name);
 }
 
