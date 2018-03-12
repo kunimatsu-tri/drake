@@ -110,7 +110,7 @@ class RgbdRendererGodot::Impl {
   /// List of Godot mesh instance indices, each mesh instance corresponds to one
   /// Drake's visual element, added in a specific order.
   using GodotInstanceIds = std::vector<int>;
-  /// Map a Drake's body_id to a list of Godot mesh intances, each of which
+  /// Map a Drake's body_id to a list of Godot mesh instances, each of which
   /// corresponds to a Drake's visual element associating with this body.
   std::map<int, GodotInstanceIds> body_to_godot_ids_;
 };

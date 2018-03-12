@@ -51,7 +51,7 @@ bool ValidateDir(const char* flagname, const std::string& dir) {
 DEFINE_bool(show_window, true,
             "If true, RgbdCamera opens windows for displaying rendering "
             "context.");
-DEFINE_double(duration, 1., "Total duration of the simulation in secondes.");
+DEFINE_double(duration, 1., "Total duration of the simulation in seconds.");
 DEFINE_int32(num, 0, "Start ID of SDF.");
 DEFINE_string(sdf_dir, "",
               "The full path of directory where SDFs are located.");
