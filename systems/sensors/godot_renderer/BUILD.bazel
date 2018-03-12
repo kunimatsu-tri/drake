@@ -10,6 +10,12 @@ load("//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+#drake_cc_library(
+#  name = "pbr_material",
+#  hdrs = ["pbr_material.h"],
+#  srcs = ["pbr_material.cc"],
+#)
+
 drake_cc_library(
     name = "godot_renderer",
     srcs = [
