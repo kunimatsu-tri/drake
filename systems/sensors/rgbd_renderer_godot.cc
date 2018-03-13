@@ -61,15 +61,15 @@ class RgbdRendererGodot::Impl {
   void UpdateViewpoint(const Eigen::Isometry3d& X_WR) const;
 
   void RenderColorImage(ImageRgba8U* color_image_out) const {
-    static int count = 0;
+//    static int count = 0;
     scene_.ApplyMaterialShader();
     scene_.FlushTransformNotifications();
     godot_renderer.Draw();
     Ref<::Image> image = scene_.Capture();
-    std::string filename = "/home/duynguyen/Downloads/rgbd_test" +
-        std::to_string(count++) + ".png";
-    std::cout << "save image to: " << filename << std::endl;
-    image->save_png(filename.c_str());
+//    std::string filename = "/home/sean/Pictures/godot/rgbd_test" +
+//        std::to_string(count++) + ".png";
+//    std::cout << "save image to: " << filename << std::endl;
+//    image->save_png(filename.c_str());
     ConvertGodotImage(color_image_out, image);
     image.unref();
   }
@@ -163,6 +163,7 @@ void RgbdRendererGodot::Impl::UpdateViewpoint(
 
 optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
     const DrakeShapes::VisualElement& visual, int body_id) {
+  std::cerr << "\n!!! RgbdRendererGodot::Impl::RegisterVisual\n";
   const DrakeShapes::Geometry& geometry = visual.getGeometry();
   int godot_id = -1;
   switch (visual.getShape()) {
@@ -188,6 +189,18 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
       break;
     }
     case DrakeShapes::MESH: {
+      godot_id = scene_.AddCubeInstance(0.02, 0.02, 0.1);
+      auto color = visual.getMaterial();
+      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+      break;
+
+//      auto mesh = dynamic_cast<const DrakeShapes::Mesh&>(geometry);
+//      std::cerr << "LOading: " << mesh.resolved_filename_ << "\n";
+//      godot_id = scene_.AddMeshInstance(mesh.resolved_filename_);
+//      auto color = visual.getMaterial();
+//      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+
+
       // TODO(duy) Use gltf in Drake by default?
       //const auto* mesh_filename =
       //dynamic_cast<const DrakeShapes::Mesh&>(geometry)

@@ -149,7 +149,7 @@ void RgbdCamera::Init(const std::string& name) {
     }
   }
 
-  renderer_->AddFlatTerrain();
+//  renderer_->AddFlatTerrain();
 }
 
 const InputPortDescriptor<double>& RgbdCamera::state_input_port() const {

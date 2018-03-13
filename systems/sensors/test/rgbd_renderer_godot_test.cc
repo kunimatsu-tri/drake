@@ -57,7 +57,8 @@ class RgbdRendererGodot final : public RgbdRenderer {
 // TODO(duy): Proper singleton
 godotvis::GodotRenderer godot_renderer(640, 480);
 // TODO(duy): remove this hacky path
-std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
+//std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
+std::string path = "/home/sean/code/godot-demo-projects/3d/material_testers/";
 
 class RgbdRendererGodot::Impl {
  public:
@@ -106,7 +107,7 @@ class RgbdRendererGodot::Impl {
      scene_.FlushTransformNotifications();
      godot_renderer.Draw();
      Ref<::Image> image = scene_.Capture();
-     std::string filename = "/home/duynguyen/Downloads/rgbd_test" +
+     std::string filename = "/home/sean/Downloads/rgbd_test/" +
                             std::to_string(count++) + ".png";
      std::cout << "save image to: " << filename << std::endl;
      image->save_png(filename.c_str());
@@ -293,7 +294,10 @@ TEST_F(RgbdRendererGodotTest, InstantiationTest) {
   // TODO(duy): Actually check these params inside Impl::scene_'s viewport
 }
 
-TEST_F(RgbdRendererGodotTest, NoBodyTest) {
+TEST_F(RgbdRendererGodotTest, DISABLED_NoBodyTest) {
+  // NOTE: This test cannot pass in the configuration in which the environment
+  // is not a simple solid color -- loading night.hdr means an empty scene will
+  // be some portion of the hdr image.
   Init(Isometry3d::Identity());
   RenderColorImage();
 

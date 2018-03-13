@@ -234,9 +234,10 @@ void Generate(int num, std::ofstream& out) {
       plant->get_output_port(0),
       drake_viz->get_input_port(0));
 
-  builder.ExportOutput(rgbd_camera->color_image_output_port());
-  builder.ExportOutput(rgbd_camera->label_image_output_port());
-  builder.ExportOutput(plant->kinematics_results_output_port());
+  int color_port_index = builder.ExportOutput(rgbd_camera->color_image_output_port());
+  int label_port_index = builder.ExportOutput(rgbd_camera->label_image_output_port());
+  int kinematics_port_index = builder.ExportOutput(plant->kinematics_results_output_port());
+  drake::unused(color_port_index, label_port_index, kinematics_port_index);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
@@ -257,6 +258,8 @@ void Generate(int num, std::ofstream& out) {
 
   simulator->StepTo(FLAGS_duration);
   diagram->CalcOutput(simulator->get_context(), output.get());
+
+  std::cerr << "Casting output port to label image\n";
 
   auto sys_label =
       output->GetMutableData(1)->GetMutableValue<ImageLabel16I>();
@@ -314,11 +317,12 @@ int main() {
 
   std::ofstream out("/home/sean/output" + std::to_string(FLAGS_num) + ".yaml");
 
-  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
-    std::cout << "Simulating No. " << i << "." << std::endl;
-    Generate(i, out);
-  }
+//  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
+//    std::cout << "Simulating No. " << i << "." << std::endl;
+//    Generate(i, out);
+//  }
 
+  Generate(FLAGS_num, out);
   out.close();
   return 0;
 }
