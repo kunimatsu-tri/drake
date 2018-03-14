@@ -177,9 +177,13 @@ void Generate(int num, std::ofstream& out) {
   drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
       FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
 
+
+  const size_t last_dot = FLAGS_sdf_floating.find_last_of(".");
+  auto sdf_name = FLAGS_sdf_floating.substr(0, last_dot);
+
   std::string n = std::to_string(num);
   drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
-      FLAGS_sdf_dir + "/silverware" + n + ".sdf",
+      FLAGS_sdf_dir + "/" + sdf_name + n + ".sdf",
       kQuaternion, tree.get());
 
   drake::multibody::AddFlatTerrainToWorld(tree.get());
@@ -213,8 +217,6 @@ void Generate(int num, std::ofstream& out) {
               "rgbd_camera", plant->get_rigid_body_tree(),
               Eigen::Vector3d(x, y, z),
               Eigen::Vector3d(roll, pitch, yaw),
-              // Eigen::Vector3d(-0.4, 0., 1.),
-              // Eigen::Vector3d(0., M_PI_2 * 0.8, 0.),
               0.5, 5.0, M_PI_4, FLAGS_show_window),
       kCameraUpdatePeriod);
 
@@ -260,21 +262,30 @@ void Generate(int num, std::ofstream& out) {
 
   if (!CheckEmpty(sys_label)) {
     SaveLabelToFile<PixelType::kLabel16I>(
-        std::string("/home/kunimatsu/images/label") + n + ".png", sys_label);
+        std::string("/home/kunimatsu/" + sdf_name + "/label") + n + ".png",
+        sys_label);
 
     auto sys_rgb =
         output->GetMutableData(0)->GetMutableValue<ImageRgba8U>();
     SaveToFile<PixelType::kRgba8U>(
-        std::string("/home/kunimatsu/images/rgb") + n + ".png", sys_rgb);
+        std::string("/home/kunimatsu/" + sdf_name + "/rgb") + n + ".png",
+        sys_rgb);
 
-    auto quat =
-        math::RollPitchYawToQuaternion(Eigen::Vector3d(roll, pitch, yaw));
+    // Computes color optical frame.
+    Eigen::Isometry3d X_WB = Eigen::Isometry3d::Identity();
+    X_WB.linear() = math::rpy2rotmat(Eigen::Vector3d(roll, pitch, yaw));
+    X_WB.translation() = Eigen::Vector3d(x, y, z);
+    auto X_WC = X_WB * rgbd_camera->camera().color_camera_optical_pose();
+    auto pos = X_WC.translation();
+    auto quat = Eigen::Quaterniond(X_WC.linear());
     string result = "";
-    result += fmt::format("- sdf: \"{}\"\n", "silverware" + n + ".sdf");
+    result += fmt::format("- sdf: \"{}\"\n", "mugs" + n + ".sdf");
     result += fmt::format("  rgb: \"{}\"\n", "rgb" + n + ".png");
     result += fmt::format("  label: \"{}\"\n", "label" + n + ".png");
     result += fmt::format("  camera_pose:\n");
-    result += fmt::format("    position: [{}, {}, {}]\n", x, y, z);
+    // result += fmt::format("    position: [{}, {}, {}]\n", x, y, z);
+    result += fmt::format("    position: [{}, {}, {}]\n",
+                          pos.x(), pos.y(), pos.z());
     result += fmt::format("    orientation: [{}, {}, {}, {}]\n",
                           quat.w(), quat.x(), quat.y(), quat.z());
     result += fmt::format("  objects:\n");
