@@ -13,6 +13,9 @@
 namespace drake {
 namespace systems {
 namespace trajectory_optimization {
+
+using trajectories::PiecewisePolynomial;
+
 namespace {
 
 std::unique_ptr<LinearSystem<double>> MakeSimpleLinearSystem() {
@@ -86,9 +89,9 @@ GTEST_TEST(DirectCollocationTest, TestReconstruction) {
   prog.SetDecisionVariableValues(
       Eigen::VectorXd::LinSpaced(prog.num_vars(), 1, prog.num_vars()));
 
-  const PiecewisePolynomialTrajectory input_spline =
+  const PiecewisePolynomial<double> input_spline =
       prog.ReconstructInputTrajectory();
-  const PiecewisePolynomialTrajectory state_spline =
+  const PiecewisePolynomial<double> state_spline =
       prog.ReconstructStateTrajectory();
   const auto derivative_spline = state_spline.derivative();
 
@@ -102,7 +105,7 @@ GTEST_TEST(DirectCollocationTest, TestReconstruction) {
     EXPECT_TRUE(
         CompareMatrices(system->A() * prog.GetSolution(prog.state(i)) +
                             system->B() * prog.GetSolution(prog.input(i)),
-                        derivative_spline->value(time), 1e-6));
+                        derivative_spline.value(time), 1e-6));
 
     if (i < (kNumSampleTimes - 1)) {
       time += prog.GetSolution(prog.timestep(i).coeff(0));
@@ -119,7 +122,7 @@ GTEST_TEST(DirectCollocationTest, TestReconstruction) {
 
     const auto& binding = collocation_constraints[i];
     Eigen::Vector2d defect =
-        derivative_spline->value(collocation_time) -
+        derivative_spline.value(collocation_time) -
         system->A() * state_spline.value(collocation_time) -
         system->B() * input_spline.value(collocation_time);
     EXPECT_TRUE(
@@ -226,6 +229,38 @@ GTEST_TEST(DirectCollocationTest, NoInputs) {
   const double duration = (kNumSampleTimes - 1) * kFixedTimeStep;
   EXPECT_NEAR(prog.GetSolution(prog.final_state())(0), x0 * std::exp(-duration),
               1e-6);
+}
+
+GTEST_TEST(DirectCollocationTest, AddDirectCollocationConstraint) {
+  const auto double_integrator = MakeDoubleIntegrator();
+  auto context = double_integrator->CreateDefaultContext();
+  auto constraint = std::make_shared<DirectCollocationConstraint>
+      (*double_integrator, *context);
+
+  solvers::MathematicalProgram prog;
+  const auto h = prog.NewContinuousVariables<1>();
+  const auto x0 = prog.NewContinuousVariables<2>();
+  const auto x1 = prog.NewContinuousVariables<2>();
+  const auto u0 = prog.NewContinuousVariables<1>();
+  const auto u1 = prog.NewContinuousVariables<1>();
+
+  solvers::Binding<solvers::Constraint> binding =
+      AddDirectCollocationConstraint(constraint, h, x0, x1, u0, u1, &prog);
+
+  EXPECT_EQ(prog.generic_constraints().size(), 1);
+
+  // qdot = 0, u = 0 should be a fixed point for any q.  Test a simple one.
+  // TODO(hongkai-dai): Don't SetDecisionVariableValues outside of the
+  // solvers.  See #8344.
+  prog.SetDecisionVariableValues(h, Vector1d{1.0});
+  prog.SetDecisionVariableValues(x0, Eigen::Vector2d{1., 0.});
+  prog.SetDecisionVariableValues(x1, Eigen::Vector2d{1., 0.});
+  prog.SetDecisionVariableValues(u0, Vector1d{0.});
+  prog.SetDecisionVariableValues(u1, Vector1d{0.});
+
+  const Eigen::VectorXd val = prog.EvalBindingAtSolution(binding);
+  EXPECT_EQ(val.size(), 2);
+  EXPECT_TRUE(val.isZero());
 }
 
 }  // anonymous namespace

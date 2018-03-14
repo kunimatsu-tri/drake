@@ -3,13 +3,40 @@
 
 """
 Makes selected VTK headers and precompiled shared libraries available to be
-used as a C/C++ dependency. On Ubuntu Xenial, a VTK archive is downloaded and
-unpacked. On macOS and OS X, VTK must be installed using Homebrew.
+used as a C++ dependency. On Ubuntu Xenial, a VTK archive is downloaded and
+unpacked. On macOS, VTK must be installed from the robotlocomotion/director tap
+(https://git.io/vN6ft) using Homebrew.
+
+Archive naming convention:
+    vtk-v<version>-qt-<qt version>-xenial-<arch>[-<rebuild>]
+
+Build configuration:
+    BUILD_TESTING=OFF
+    BUILD_SHARED_LIBS=ON
+    CMAKE_BUILD_TYPE=Release
+    Module_vtkGUISupportQt=ON
+    VTK_LEGACY_REMOVE=ON
+    VTK_QT_VERSION=5
+    VTK_USE_SYSTEM_EXPAT=ON
+    VTK_USE_SYSTEM_FREETYPE=ON
+    VTK_USE_SYSTEM_HDF5=ON
+    VTK_USE_SYSTEM_JPEG=ON
+    VTK_USE_SYSTEM_JSONCPP=ON
+    VTK_USE_SYSTEM_LIBXML2=ON
+    VTK_USE_SYSTEM_LZ4=ON
+    VTK_USE_SYSTEM_NETCDF=ON
+    VTK_USE_SYSTEM_NETCDFCPP=ON
+    VTK_USE_SYSTEM_OGGTHEORA=ON
+    VTK_USE_SYSTEM_PNG=ON
+    VTK_USE_SYSTEM_TIFF=ON
+    VTK_USE_SYSTEM_ZLIB=ON
+    VTK_WRAP_PYTHON=ON
 
 Example:
     WORKSPACE:
+        load("@drake//tools/workspace:mirrors.bzl", "DEFAULT_MIRRORS")
         load("@drake//tools/workspace/vtk:repository.bzl", "vtk_repository")
-        vtk_repository(name = "foo")
+        vtk_repository(name = "foo", mirrors = DEFAULT_MIRRORS)
 
     BUILD:
         cc_library(
@@ -50,8 +77,6 @@ def _vtk_cc_library(os_name, name, hdrs = None, visibility = None, deps = None,
     srcs = []
 
     if os_name == "mac os x":
-        srcs = ["empty.cc"]
-
         if not header_only:
             linkopts = linkopts + [
                 "-L/usr/local/opt/vtk@{}/lib".format(VTK_MAJOR_MINOR_VERSION),
@@ -83,17 +108,16 @@ def _impl(repository_ctx):
     if os_result.is_macos:
         repository_ctx.symlink("/usr/local/opt/vtk@{}/include".format(
             VTK_MAJOR_MINOR_VERSION), "include")
-        repository_ctx.file("empty.cc", executable = False)
     elif os_result.is_ubuntu:
         if os_result.ubuntu_release == "16.04":
-            archive = "vtk-8.0.1-qt-5.5.1-xenial-x86_64.tar.gz"
-            sha256 = "095a88c14c44b8f2655c5932f21ccbfeca840e5815f14b153bc5d5a102940527"  # noqa
+            archive = "vtk-v8.0.1-qt-5.5.1-xenial-x86_64-1.tar.gz"
+            sha256 = "d6cb1b8cfe8d8b9abe400c39267954cbba5b12d4ff550d42a1fe695d3e01dc40"  # noqa
         else:
             fail("Operating system is NOT supported", attr = os_result)
 
         urls = [
-            "https://drake-packages.csail.mit.edu/vtk/{}".format(archive),
-            "https://s3.amazonaws.com/drake-packages/vtk/{}".format(archive),
+            x.format(archive = archive)
+            for x in repository_ctx.attr.mirrors.get("vtk")
         ]
         root_path = repository_ctx.path("")
 
@@ -101,6 +125,8 @@ def _impl(repository_ctx):
 
     else:
         fail("Operating system is NOT supported", attr = os_result)
+
+    file_content = "# -*- python -*-"
 
     # Note that we only create library targets for enough of VTK to support
     # those used directly or indirectly by Drake.
@@ -112,7 +138,7 @@ def _impl(repository_ctx):
     #   VTK/IO/XML/module.cmake
     #   VTK/IO/XMLParser/module.cmake
 
-    file_content = _vtk_cc_library(
+    file_content += _vtk_cc_library(
         repository_ctx.os.name,
         "vtkCommonColor",
         deps = [
@@ -548,7 +574,7 @@ def _impl(repository_ctx):
 
     file_content += _vtk_cc_library(repository_ctx.os.name, "vtksys")
 
-    # Glob all files for the data dependency of drake-visualizer.
+    # Glob all files for the data dependency of //tools:drake_visualizer.
     file_content += """
 filegroup(
     name = "vtk",
@@ -576,4 +602,9 @@ install_files(
 
     repository_ctx.file("BUILD", content = file_content, executable = False)
 
-vtk_repository = repository_rule(implementation = _impl)
+vtk_repository = repository_rule(
+    attrs = {
+        "mirrors": attr.string_list_dict(),
+    },
+    implementation = _impl,
+)

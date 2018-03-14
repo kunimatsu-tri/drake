@@ -168,29 +168,29 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
   int godot_id = -1;
   switch (visual.getShape()) {
     case DrakeShapes::BOX: {
-      auto box = dynamic_cast<const DrakeShapes::Box&>(geometry);
+      const auto& box = dynamic_cast<const DrakeShapes::Box&>(geometry);
       godot_id = scene_.AddCubeInstance(box.size(0), box.size(1), box.size(2));
-      auto color = visual.getMaterial();
+      const auto& color = visual.getMaterial();
       scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::SPHERE: {
-      auto sphere = dynamic_cast<const DrakeShapes::Sphere&>(geometry);
+      const auto& sphere = dynamic_cast<const DrakeShapes::Sphere&>(geometry);
       godot_id = scene_.AddSphereInstance(sphere.radius);
       auto color = visual.getMaterial();
       scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::CYLINDER: {
-      auto cylinder = dynamic_cast<const DrakeShapes::Cylinder&>(geometry);
+      const auto& cylinder = dynamic_cast<const DrakeShapes::Cylinder&>(geometry);
       godot_id = scene_.AddCylinderInstance(cylinder.length, cylinder.radius);
-      auto color = visual.getMaterial();
+      const auto& color = visual.getMaterial();
       scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::MESH: {
       godot_id = scene_.AddCubeInstance(0.02, 0.02, 0.1);
-      auto color = visual.getMaterial();
+      const auto& color = visual.getMaterial();
       scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
 

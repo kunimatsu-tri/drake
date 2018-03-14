@@ -145,6 +145,7 @@ cc_library(
         "-I/usr/include/freetype2"
     ],
     defines = [
+        "FREETYPE_ENABLED",
         "GLAD_ENABLED",
         "GLES_OVER_GL",
         "UNIX_ENABLED",
@@ -178,6 +179,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "generated_headers",
+        "@freetype2",
         "@libpng",
         "@zlib",
     ],

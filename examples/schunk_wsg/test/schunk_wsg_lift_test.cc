@@ -21,10 +21,11 @@
 
 #include "drake/common/eigen_types.h"
 #include "drake/common/find_resource.h"
-#include "drake/common/trajectories/piecewise_polynomial_trajectory.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/parsers/sdf_parser.h"
+#include "drake/manipulation/schunk_wsg/schunk_wsg_constants.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_frame.h"
 #include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
@@ -56,6 +57,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::KinematicsResults;
 using drake::systems::Context;
 using drake::systems::BasicVector;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::Vector3d;
 
 // Initial height of the box's origin.
@@ -291,10 +293,10 @@ TEST_P(SchunkWsgLiftTest, BoxLiftTest) {
 
   // Stop gradually.
   lift_knots.push_back(Eigen::Vector2d(kLiftHeight, 0.));
-  PiecewisePolynomialTrajectory lift_trajectory(
+  PiecewisePolynomial<double> lift_trajectory =
       PiecewisePolynomial<double>::Cubic(
           lift_breaks, lift_knots, Eigen::Vector2d(0., 0.),
-          Eigen::Vector2d(0., 0.)));
+          Eigen::Vector2d(0., 0.));
   auto lift_source =
       builder.AddSystem<systems::TrajectorySource>(lift_trajectory);
   lift_source->set_name("lift_source");
@@ -334,8 +336,8 @@ TEST_P(SchunkWsgLiftTest, BoxLiftTest) {
   grip_knots.push_back(Vector1d(0));
   grip_knots.push_back(Vector1d(0));
   grip_knots.push_back(Vector1d(40));
-  PiecewisePolynomialTrajectory grip_trajectory(
-      PiecewisePolynomial<double>::FirstOrderHold(grip_breaks, grip_knots));
+  PiecewisePolynomial<double> grip_trajectory =
+      PiecewisePolynomial<double>::FirstOrderHold(grip_breaks, grip_knots);
   auto grip_source =
       builder.AddSystem<systems::TrajectorySource>(grip_trajectory);
   grip_source->set_name("grip_source");
@@ -381,32 +383,14 @@ TEST_P(SchunkWsgLiftTest, BoxLiftTest) {
 
   const RigidBodyTreed& tree = plant->get_rigid_body_tree();
 
-  // Open the gripper.  Due to the number of links involved, this is
-  // surprisingly complicated.
-  systems::Context<double>& plant_context =
-      model->GetMutableSubsystemContext(
-          *plant, &simulator.get_mutable_context());
-  Eigen::VectorXd plant_initial_state =
-      Eigen::VectorXd::Zero(plant->get_num_states());
-  plant_initial_state.head(plant->get_num_positions())
-      = tree.getZeroConfiguration();
+  Context<double>& context = simulator.get_mutable_context();
+
+  // Open the gripper.
+  plant->SetModelInstancePositions(
+      &model->GetMutableSubsystemContext(*plant, &context), gripper_instance_id,
+      manipulation::schunk_wsg::GetSchunkWsgOpenPosition<double>());
 
   auto positions = tree.computePositionNameToIndexMap();
-
-  // The values below were extracted from the positions corresponding
-  // to an open gripper.  Dumping them here is significantly more
-  // magic than I (sam.creasey) would like.  If you find yourself
-  // tempted to cut and paste this, please consider creating a utility
-  // function which can set a segment of a state vector to an open
-  // gripper.
-  plant_initial_state(num_PID_controllers+0) = -0.0550667;
-  plant_initial_state(num_PID_controllers+1) = 0.009759;
-  plant_initial_state(num_PID_controllers+2) = 1.27982;
-  plant_initial_state(num_PID_controllers+3) = 0.0550667;
-  plant_initial_state(num_PID_controllers+4) = 0.009759;
-  plant->set_state_vector(&plant_context, plant_initial_state);
-
-  Context<double>& context = simulator.get_mutable_context();
 
   // Note: the RK2 is used instead of the RK3 here because error control
   // with our current models is yielding much slower running times without

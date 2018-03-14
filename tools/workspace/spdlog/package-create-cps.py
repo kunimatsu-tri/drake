@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from drake.tools.install.cpsutils import read_version_defs, read_requires
 
@@ -30,7 +30,7 @@ content = """
         "HAVE_SPDLOG",
         "SPDLOG_FMT_EXTERNAL"
       ],
-      "Requires": ["fmt:fmt"]
+      "Requires": ["fmt:fmt-header-only"]
     }
   }
 }

@@ -501,6 +501,7 @@ drake_cc_googletest(
     deps = [
         ":rigid_body_tree",
         "//drake/common:find_resource",
+        "//drake/common/test_utilities",
         "//drake/multibody/parsers",
     ],
 )
@@ -583,14 +584,6 @@ drake_cc_googletest(
     name = "rigid_body_test",
     deps = [
         ":rigid_body_compare_to_clone",
-        ":rigid_body_tree",
-    ],
-)
-
-drake_cc_googletest(
-    name = "rigid_body_frame_test",
-    deps = [
-        ":rigid_body_frame_compare_to_clone",
         ":rigid_body_tree",
     ],
 )

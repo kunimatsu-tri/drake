@@ -286,7 +286,7 @@ void Generate(int num, std::ofstream& out) {
     result += fmt::format("  objects:\n");
     auto kinematics =
         output->GetMutableData(2)->GetMutableValue<KinematicsResults<double>>();
-    for (const auto& body : plant->get_rigid_body_tree().bodies) {
+    for (const auto& body : plant->get_rigid_body_tree().get_bodies()) {
       string body_name = body->get_name();
       if (body_name == "world")
         continue;

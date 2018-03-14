@@ -69,7 +69,7 @@ class DrakeKukaIIwaRobot {
     model_ = MakeKukaIiwaModel<T>(
         true /* finalized model */, gravity /* acceleration of gravity */);
 
-    linkN_ = &(model_->get_world_body());
+    linkN_ = &(model_->world_body());
 
     // Get this robot's seven links.
     linkA_ = &model_->GetBodyByName("iiwa_link_1");
@@ -102,7 +102,7 @@ class DrakeKukaIIwaRobot {
 
   /// This method gets the number of rigid bodies in this robot.
   /// @returns the number of rigid bodies in this robot.
-  int get_number_of_rigid_bodies() const  { return model_->get_num_bodies(); }
+  int get_number_of_rigid_bodies() const  { return model_->num_bodies(); }
 
   /// This method calculates kinematic properties of the end-effector (herein
   /// denoted as rigid body G) of a 7-DOF KUKA LBR iiwa robot (14 kg payload).
@@ -129,73 +129,19 @@ class DrakeKukaIIwaRobot {
 
     // Retrieve end-effector pose from position kinematics cache.
     model_->CalcPositionKinematicsCache(*context_, &pc);
-    const Isometry3<T>& X_NG = pc.get_X_WB(linkG_->get_node_index());
+    const Isometry3<T>& X_NG = pc.get_X_WB(linkG_->node_index());
 
     // Retrieve end-effector spatial velocity from velocity kinematics cache.
     model_->CalcVelocityKinematicsCache(*context_, pc, &vc);
-    const SpatialVelocity<T>& V_NG_N = vc.get_V_WB(linkG_->get_node_index());
+    const SpatialVelocity<T>& V_NG_N = vc.get_V_WB(linkG_->node_index());
 
     // Retrieve end-effector spatial acceleration from acceleration cache.
-    std::vector<SpatialAcceleration<T>> A_WB(model_->get_num_bodies());
+    std::vector<SpatialAcceleration<T>> A_WB(model_->num_bodies());
     model_->CalcSpatialAccelerationsFromVdot(*context_, pc, vc, qDDt, &A_WB);
-    const SpatialAcceleration<T>& A_NG_N = A_WB[linkG_->get_node_index()];
+    const SpatialAcceleration<T>& A_NG_N = A_WB[linkG_->node_index()];
 
     // Create a class to return the results.
     return SpatialKinematicsPVA<T>(X_NG, V_NG_N, A_NG_N);
-  }
-
-  /// Given a set of points `Pi` with position vectors `p_GPi` in the end
-  /// effector frame G, this method computes the geometric Jacobian `J_NGpi`,
-  /// in the Newtonian (world) frame N defined by:
-  /// <pre>
-  ///   J_NGpi(q) = d(v_NGpi(q, v))/dv
-  /// </pre>
-  /// where `v_NGpi` is the translational velocity of point `Pi` in the world
-  /// frame N as it moves with the end effector G and v is the vector of
-  /// generalized velocities. Since the velocity of each point `Pi` is linear
-  /// in the generalized velocities, the geometric Jacobian `J_NGpi` is a
-  /// function of the generalized coordinates q only.
-  ///
-  /// The position of each point `Pi` in the set is specified by its (fixed)
-  /// position `p_GPi` in the end effector frame G.
-  ///
-  /// @param[in] q
-  ///   The vector of generalized positions.
-  /// @param[in] p_GPi
-  ///   A matrix with the fixed position of a set of points `Pi` measured and
-  ///   expressed in the end effector frame G.
-  ///   Each column of this matrix contains the position vector `p_GPi` for a
-  ///   point `Pi` measured and expressed in frame G. Therefore this input
-  ///   matrix lives in ℝ³ˣⁿᵖ with `np` the number of points in the set.
-  /// @param[out] p_NGpi
-  ///   The output positions of each point `Pi` now computed as measured and
-  ///   expressed in the world frame N.
-  ///   The output `p_NGpi` **must** have the same size as the input set
-  ///   `p_GPi` or otherwise this method throws a std::runtime_error exception.
-  ///   That is `p_NGpi` **must** be in `ℝ³ˣⁿᵖ`.
-  /// @param[out] J_NGpi
-  ///   The geometric Jacobian, function of the generalized positions
-  ///   q only. This Jacobian relates the translational velocity `v_NGpi` of
-  ///   each point `Qi` in the input set in solidary motion with frame G by:
-  ///   <pre>
-  ///     `v_NGpi(q, v) = J_NGpi(q)⋅v`
-  ///   </pre>
-  ///   so that `v_NGpi` is a column vector of size `3⋅np` concatenating the
-  ///   velocity of all points `Pi` in the same order they were given in the
-  ///   input set. Therefore `J_NGpi` is a matrix of size `3⋅np x nv`, with `nv`
-  ///   the number of generalized velocities. On input, matrix `J_NGpi` **must**
-  ///   have size `3⋅np x nv` or this method throws a std::runtime_error
-  ///   exception.
-  void CalcPointsOnEndEffectorGeometricJacobian(
-      const Eigen::Ref<const VectorX<T>>& q,
-      const Eigen::Ref<const MatrixX<T>>& p_GPi,
-      EigenPtr<MatrixX<T>> p_NGpi, EigenPtr<MatrixX<T>> J_NGpi) {
-    // Both, p_NGpi and J_NGpi are functions of the generalized positions q,
-    // only. Therefore we arbitrarily set v = 0.
-    const VectorX<T> v = VectorX<T>::Zero(7);
-    SetJointAnglesAnd1stDerivatives(q.data(), v.data());
-    model_->CalcPointsGeometricJacobianExpressedInWorld(
-        *context_, linkG_->get_body_frame(), p_GPi, p_NGpi, J_NGpi);
   }
 
   /// This method calculates joint reaction torques/forces for a 7-DOF KUKA iiwa
@@ -236,7 +182,7 @@ class DrakeKukaIIwaRobot {
 
     // Output vector of generalized forces for calculated motor torques
     // required to drive the Kuka robot at its specified rate.
-    const int number_of_generalized_speeds = model_->get_num_velocities();
+    const int number_of_generalized_speeds = model_->num_velocities();
     VectorX<T> generalized_force_output(number_of_generalized_speeds);
 
     // Output vector of spatial forces for joint reaction force/torques for
@@ -261,13 +207,13 @@ class DrakeKukaIIwaRobot {
 
     // Put joint reaction forces into return struct.
     KukaRobotJointReactionForces<T> reaction_forces;
-    reaction_forces.F_Ao_W = F_BMo_W_array[linkA_->get_node_index()];
-    reaction_forces.F_Bo_W = F_BMo_W_array[linkB_->get_node_index()];
-    reaction_forces.F_Co_W = F_BMo_W_array[linkC_->get_node_index()];
-    reaction_forces.F_Do_W = F_BMo_W_array[linkD_->get_node_index()];
-    reaction_forces.F_Eo_W = F_BMo_W_array[linkE_->get_node_index()];
-    reaction_forces.F_Fo_W = F_BMo_W_array[linkF_->get_node_index()];
-    reaction_forces.F_Go_W = F_BMo_W_array[linkG_->get_node_index()];
+    reaction_forces.F_Ao_W = F_BMo_W_array[linkA_->node_index()];
+    reaction_forces.F_Bo_W = F_BMo_W_array[linkB_->node_index()];
+    reaction_forces.F_Co_W = F_BMo_W_array[linkC_->node_index()];
+    reaction_forces.F_Do_W = F_BMo_W_array[linkD_->node_index()];
+    reaction_forces.F_Eo_W = F_BMo_W_array[linkE_->node_index()];
+    reaction_forces.F_Fo_W = F_BMo_W_array[linkF_->node_index()];
+    reaction_forces.F_Go_W = F_BMo_W_array[linkG_->node_index()];
     return reaction_forces;
   }
 

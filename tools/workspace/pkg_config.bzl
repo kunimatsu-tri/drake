@@ -69,17 +69,28 @@ def setup_pkg_config_repository(repository_ctx):
     # unchanged by a pop.
     for i in reversed(range(len(linkopts))):
         linkopt = linkopts[i]
-        # Absolute system paths to *.so files get turned into -l instead.
-        # This fixup is only implemented for Ubuntu (not macOS) so far.
-        if linkopt.endswith(".so"):
-            possible_libdirs = [
-                "/usr/lib",
-                "/usr/lib/x86_64-linux-gnu",
-            ]
+        # Absolute system paths to *.dylib and *.so files get turned into -l
+        # instead.
+        if linkopt.endswith(".dylib") or linkopt.endswith(".so"):
+            if linkopt.endswith(".dylib"):
+                possible_libdirs = [
+                    "/usr/lib",
+                    "/usr/local/lib",
+                ]
+                suffix = ".dylib"
+            elif linkopt.endswith(".so"):
+                possible_libdirs = [
+                    "/usr/lib",
+                    "/usr/lib/x86_64-linux-gnu",
+                ]
+                suffix = ".so"
+            else:
+                return struct(error = ("expected linkopt {} to end with " +
+                                       ".dylib or .so").format(linkopt))
             for dir in possible_libdirs:
                 prefix = dir + "/lib"
                 if linkopt.startswith(prefix):
-                    name = linkopt[len(prefix):-len(".so")]
+                    name = linkopt[len(prefix):-len(suffix)]
                     if "/" not in name:
                         linkopt = "-l" + name
                         linkopts[i] = linkopt
@@ -117,9 +128,13 @@ def setup_pkg_config_repository(repository_ctx):
     # We process in reserve order to keep our loop index unchanged by a pop.
     for cflag in cflags:
         if cflag.startswith("-I"):
-            absolute_includes += [cflag[2:]]
+            value = cflag[2:]
+            if value not in absolute_includes:
+                absolute_includes.append(value)
         elif cflag.startswith("-D"):
-            defines += [cflag[2:]]
+            value = cflag[2:]
+            if value not in defines:
+                defines.append(value)
         elif cflag in [
                 "-frounding-math",
                 "-ffloat-store",
@@ -141,6 +156,10 @@ def setup_pkg_config_repository(repository_ctx):
     includes = []
     hdrs_path = repository_ctx.path("include")
     for item in absolute_includes:
+        if item == "/usr/include" or item == "/usr/local/include":
+            print(("pkg-config of {} returned an include path that " +
+                   "contains {} that may contain unrelated headers").format(
+                       repository_ctx.attr.modname, item))
         symlink_dest = item.replace('/', '_')
         repository_ctx.symlink(
             repository_ctx.path(item),

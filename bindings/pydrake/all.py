@@ -25,7 +25,9 @@ from . import getDrakePath
 from .autodiffutils import *
 from .common import *
 from .forwarddiff import *
+from .math import *
 from .symbolic import *
+from .trajectories import *
 
 # Submodules.
 # - `examples` does not offer public Drake symbols.

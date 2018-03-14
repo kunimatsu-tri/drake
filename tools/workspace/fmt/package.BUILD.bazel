@@ -13,8 +13,11 @@ package(
 
 cc_library(
     name = "fmt",
-    srcs = glob(["fmt/*.cc"]),
-    hdrs = glob(["fmt/*.h"]),
+    hdrs = glob([
+        "fmt/*.cc",
+        "fmt/*.h",
+    ]),
+    defines = ["FMT_HEADER_ONLY=1"],
     includes = ["."],
 )
 
@@ -23,7 +26,7 @@ CMAKE_PACKAGE = "fmt"
 cmake_config(
     package = CMAKE_PACKAGE,
     script = "@drake//tools/workspace/fmt:package-create-cps.py",
-    version_file = "CMakeLists.txt",
+    version_file = "fmt/format.h",
 )
 
 # Creates rule :install_cmake_config.

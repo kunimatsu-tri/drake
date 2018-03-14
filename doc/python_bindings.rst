@@ -63,18 +63,13 @@ To check this:
 
 .. note::
 
-    If you are on Mac, you must ensure that you have Homebrew Python installed,
-    and are using ``python2`` from Homebrew Python to execute these scripts.
-    You may do this by either explicitly using ``python2`` on the command line,
-    or follow the instructions from ``brew info python``::
+    If you are using macOS, you must ensure that you are using the ``python2``
+    executable to run these scripts.
 
-        This formula installs a python2 executable to /usr/local/bin.
-        If you wish to have this formula's python executable in your PATH then
-        add the following to ~/.bash_profile:
-          export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+    If you would like to use ``jupyter``, then be sure to install it via
+    ``pip2 install jupyter`` (*not* ``brew install jupyter``) to ensure that it
+    uses the correct ``PYTHONPATH``.
 
-    Once you have done this, if you would like to use ``jupyter`` then be sure to install it via ``pip install jupyter`` (*not* via Homebrew) to ensure that it uses the correct Python interpreter. 
-    
     ..
         Developers: Ensure this is synchronized with the steps in
         ``install_prereqs_user_environment.sh``.
@@ -142,3 +137,11 @@ explicity refer to each symbol:
             "drake/examples/pendulum/Pendulum.urdf"))
     simulator = pydrake.systems.analysis.Simulator(
         pydrake.multibody.rigid_body_plant.RigidBodyPlant(tree))
+
+For Developers
+==============
+
+If you are developing Python bindings, please see the Doxygen page for
+`Python Bindings <http://drake.mit.edu/doxygen_cxx/python_bindings.html>`_.
+This provides information on programming conventions as well as tips for
+debugging.
