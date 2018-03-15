@@ -61,7 +61,12 @@ class RgbdRendererGodot::Impl {
       const DrakeShapes::VisualElement& visual, int body_id);
 
   void UpdateVisualPose(const Eigen::Isometry3d& X_WV, int body_id,
-                        RgbdRenderer::VisualIndex visual_id) const {}
+                        RgbdRenderer::VisualIndex visual_id) const {
+    int godot_id = body_to_godot_ids_.at(body_id).at(visual_id);
+    scene_.SetInstancePose(godot_id, X_WV);
+    // TODO(SeanCurtis-TRI): Mark scene as dirty so that flush notifcations happens once.
+    scene_.FlushTransformNotifications();
+  }
 
   void UpdateViewpoint(const Eigen::Isometry3d& X_WR) const;
 
