@@ -222,7 +222,7 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
   if (godot_id > 0) {
     body_to_godot_ids_[body_id].push_back(godot_id);
     int visual_id = static_cast<int>(body_to_godot_ids_[body_id].size() - 1);
-    return optional<VisualIndex>(VisualIndex(static_cast<int>(visual_id)));
+    return optional<VisualIndex>(VisualIndex(visual_id));
   }
   return nullopt;
 }
