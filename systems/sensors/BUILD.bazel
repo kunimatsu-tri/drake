@@ -196,6 +196,7 @@ drake_cc_library(
         "//multibody/shapes",
         "//systems/sensors/godot_renderer",
         "@eigen",
+        "@spruce",
         "@vtk//:vtkCommonCore",
         "@vtk//:vtkCommonDataModel",
         "@vtk//:vtkCommonTransforms",

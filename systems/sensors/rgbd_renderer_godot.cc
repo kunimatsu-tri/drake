@@ -1,5 +1,9 @@
 #include "drake/systems/sensors/rgbd_renderer_godot.h"
 
+#include <algorithm>
+
+#include <spruce.hh>
+
 #include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
 
@@ -172,6 +176,34 @@ void RgbdRendererGodot::Impl::UpdateViewpoint(
   scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
 }
 
+// Helper function to tentatively convert an obj file name to a .mesh file name.
+std::string ObjToMesh(const DrakeShapes::Mesh& mesh) {
+  size_t dot_position(mesh.resolved_filename_.find('.'));
+  if (dot_position == std::string::npos) {
+    throw std::runtime_error("Mesh file has no extension: " + mesh.uri_);
+  }
+
+  std::string source_file = mesh.resolved_filename_;
+  {
+    std::string extension{mesh.resolved_filename_.substr(dot_position)};
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   ::tolower);
+    if (extension != ".obj" && extension != ".mesh") {
+      throw std::runtime_error("Mesh file has unrecognized extension: "
+                                   + extension);
+    }
+    if (extension == ".obj") {
+      source_file = source_file.substr(0, dot_position) + ".mesh";
+    }
+    spruce::path source_path{source_file};
+    if (!source_path.exists()) {
+      throw std::runtime_error(
+          "Can't load expected file for requested mesh: " + source_file);
+    }
+  }
+  return source_file;
+}
+
 optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
     const DrakeShapes::VisualElement& visual, int body_id) {
   std::cerr << "\n!!! RgbdRendererGodot::Impl::RegisterVisual\n";
@@ -200,17 +232,14 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
       break;
     }
     case DrakeShapes::MESH: {
-      godot_id = scene_.AddCubeInstance(0.02, 0.02, 0.1);
-      const auto& color = visual.getMaterial();
+      // Swap obj for mesh, test if the file exists, load it.
+      const auto& mesh = dynamic_cast<const DrakeShapes::Mesh&>(geometry);
+
+      godot_id = scene_.AddMeshInstance(ObjToMesh(mesh));
+      auto color = visual.getMaterial();
       scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
-      break;
-
-//      auto mesh = dynamic_cast<const DrakeShapes::Mesh&>(geometry);
-//      std::cerr << "LOading: " << mesh.resolved_filename_ << "\n";
-//      godot_id = scene_.AddMeshInstance(mesh.resolved_filename_);
-//      auto color = visual.getMaterial();
-//      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
-
+      scene_.SetInstanceScale(godot_id, mesh.scale_(0), mesh.scale_(1),
+                              mesh.scale_(2));
 
       // TODO(duy) Use gltf in Drake by default?
       //const auto* mesh_filename =
