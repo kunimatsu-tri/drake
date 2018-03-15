@@ -14,8 +14,13 @@ const double kClippingPlaneFar = 100.;
 const double kTerrainSize = 100.;
 const std::string path = "/home/sean/code/godot-demo-projects/3d/material_testers/";
 
-// TODO(duy): Proper singleton
-godotvis::GodotRenderer godot_renderer(640, 480);
+// TODO(SeanCurtis-Tri): This needs to be never_destroyed but with a destructor
+// being called. So, it should have a *weak* pointer which returns shared
+// pointers.
+godotvis::GodotRenderer* Renderer() {
+  static godotvis::GodotRenderer renderer(640, 480);
+  return &renderer;
+}
 
 }  // namespace
 
@@ -24,7 +29,7 @@ class RgbdRendererGodot::Impl {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Impl)
 
   Impl(RgbdRendererGodot* parent, const Eigen::Isometry3d& X_WC)
-      : parent_(parent) {
+      : parent_(parent), renderer_(Renderer()) {
     scene_.Initialize();
     scene_.set_viewport_size(parent_->config().width, parent_->config().height);
     scene_.AddCamera(parent_->config().fov_y * 180. / M_PI, kClippingPlaneNear,
@@ -64,7 +69,7 @@ class RgbdRendererGodot::Impl {
 //    static int count = 0;
     scene_.ApplyMaterialShader();
     scene_.FlushTransformNotifications();
-    godot_renderer.Draw();
+    renderer_->Draw();
     Ref<::Image> image = scene_.Capture();
 //    std::string filename = "/home/sean/Pictures/godot/rgbd_test" +
 //        std::to_string(count++) + ".png";
@@ -77,7 +82,7 @@ class RgbdRendererGodot::Impl {
   void RenderDepthImage(ImageDepth32F* depth_image_out) const {
     scene_.ApplyDepthShader();
     scene_.FlushTransformNotifications();
-    godot_renderer.Draw();
+    renderer_->Draw();
     Ref<::Image> image = scene_.Capture();
     ConvertGodotImage(depth_image_out, image);
     image.unref();
@@ -124,6 +129,7 @@ class RgbdRendererGodot::Impl {
   /// Map a Drake's body_id to a list of Godot mesh instances, each of which
   /// corresponds to a Drake's visual element associating with this body.
   std::map<int, GodotInstanceIds> body_to_godot_ids_;
+  godotvis::GodotRenderer* renderer_{};
 };
 
 
