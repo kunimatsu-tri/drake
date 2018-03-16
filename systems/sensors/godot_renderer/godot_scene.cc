@@ -24,6 +24,7 @@ void GodotScene::Initialize() {
   // visual instance (camera, meshes etc) to the tree_.
   tree_ = memnew(SceneTree);
   tree_->init();
+  tree_->get_root()->set_msaa(Viewport::MSAA_16X);
 
   // Dummy Spatial as the top root of the scene
   scene_root_ = memnew(Spatial);
