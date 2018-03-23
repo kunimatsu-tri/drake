@@ -45,6 +45,7 @@ drake_cc_googletest(
     local = 1,
     deps = [
         ":godot_renderer",
+        "@gflags",
     ],
 )
 

@@ -30,9 +30,31 @@ void GodotScene::Initialize() {
   scene_root_ = memnew(Spatial);
   tree_->add_current_scene(scene_root_); // need to do this here so all
                                          // subsequent children knows about the
-                                         // tree_, espcially the camera
+                                         // tree_, especially the camera
 
   InitDepthShader();
+}
+
+
+void GodotScene::AddOmniLight(double x, double y, double z) {
+
+  OmniLight *light = memnew(OmniLight);
+  scene_root_->add_child(light);
+  // Omni light parameters
+  light->set_param(Light::PARAM_RANGE, 5.0);
+  light->set_param(Light::PARAM_ATTENUATION, 1.0);
+  light->set_shadow_mode(OmniLight::SHADOW_CUBE);
+  light->set_shadow_detail(OmniLight::SHADOW_DETAIL_HORIZONTAL);
+  // Light parameters
+  light->set_color(Color(1.0, 1.0, 1.0));
+  light->set_param(Light::PARAM_ENERGY, 1);
+  light->set_param(Light::PARAM_INDIRECT_ENERGY, 1);
+  light->set_negative(false);
+  light->set_param(Light::PARAM_SPECULAR, 0.5);
+  light->set_bake_mode(Light::BAKE_INDIRECT);
+  light->set_shadow(true);
+
+  light->set_transform(Transform(Basis(), Vector3(x, y, z)));
 }
 
 void GodotScene::SetupEnvironment(const std::string& env_filename) {
@@ -69,12 +91,6 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
   env->set_bg_energy(5.0);
   tree_->get_root()->get_world()->set_environment(env);
   // Add lights
-  Light *light = memnew(OmniLight());
-  scene_root_->add_child(light);
-  light->set_color(Color(1.0, 1.0, 1.0));
-  light->set_param(Light::PARAM_ENERGY, 2.0);
-  light->set_param(Light::PARAM_RANGE, 50.0);
-  light->set_transform(Transform(Basis(), Vector3(1.0, 5., 10.)));
 }
 
 void GodotScene::SetBackgroundColor(float r, float g, float b) {

@@ -81,6 +81,8 @@ public:
   void SetInstanceColor(int id, float r, float g, float b, float alpha = 1.0f);
   void FlushTransformNotifications();
 
+  void AddOmniLight(double x, double y, double z);
+
 private:
   void InitDepthShader();
   Spatial* get_spatial_instance(int id);

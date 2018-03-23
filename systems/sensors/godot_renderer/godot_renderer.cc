@@ -2,6 +2,8 @@
 #include "modules/jpg/register_types.h"
 #include "modules/hdr/register_types.h"
 
+#include <iostream>
+
 namespace godotvis {
 
 void GodotRenderer::Initialize() {
@@ -90,8 +92,10 @@ void GodotRenderer::InitGodot() {
 
   // Needed for GLOBAL_DEF in VisualServer and Rasterizer
   globals_ = memnew(ProjectSettings);
-  register_core_settings(); // here globals_ is present
 
+  // TODO(SeanCurtis-TRI): Get rid of this; it only initializes network
+  // settings.
+  register_core_settings(); // here globals_ is present
   //////////////////////////////////////
   // Main setup2
   ////////////////////////////////////////////////////////////////

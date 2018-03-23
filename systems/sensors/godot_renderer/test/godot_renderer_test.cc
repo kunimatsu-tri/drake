@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include <gflags/gflags.h>
+
 #include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
 
@@ -18,6 +20,33 @@ std::string path = godot_root + "godot-demo-projects/3d/material_testers/";
 std::string gltf_path = godot_root + "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 std::string save_path = user_root + "Downloads/godot/";
 
+DEFINE_double(x, 0, "light x-position");
+DEFINE_double(y, 0, "light y-position");
+DEFINE_double(z, 0.1, "light z-position");
+
+// I'm using this to confirm that I can illuminate a ground plane.
+void test_plane() {
+  GodotRenderer renderer(640, 480);
+  GodotScene scene;
+  scene.Initialize();
+  scene.SetupEnvironment(path + "lobby.hdr");
+  scene.AddOmniLight(FLAGS_x, FLAGS_y, FLAGS_z);
+  scene.AddCamera(65.0, 0.1, 100.0);
+  Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
+  // CAMERA defaults to looking in the negative-z direction
+  camera_pose.translation() = Eigen::Vector3d(0., 0., 1);
+  scene.SetCameraPose(camera_pose);
+  scene.AddPlaneInstance(5, 5);
+  scene.FlushTransformNotifications();
+//  scene.set_viewport_size(1280, 960);
+  renderer.Draw();
+  Ref<Image> image = scene.Capture();
+  image->save_png((save_path + "plane.png").c_str());
+  scene.Finish();
+  image.unref();
+}
+
+// Tests the loading of a gltf file and its rendering.
 void test_GLTF() {
   GodotRenderer renderer(1280, 960);
   GodotScene scene;
@@ -164,7 +193,9 @@ void test_primitives() {
 }
 
 int main(int argc, char *argv[]) {
-  RenderFork();
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  test_plane();
+//  RenderFork();
 //  test_GLTF();
   return 0; //os_.get_exit_code();
 }
