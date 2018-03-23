@@ -26,19 +26,37 @@ DEFINE_double(z, 0.1, "light z-position");
 
 // I'm using this to confirm that I can illuminate a ground plane.
 void test_plane() {
+  using std::to_string;
   GodotRenderer renderer(640, 480);
   GodotScene scene;
   scene.Initialize();
   scene.SetupEnvironment(path + "lobby.hdr");
   scene.AddOmniLight(FLAGS_x, FLAGS_y, FLAGS_z);
   scene.AddCamera(65.0, 0.1, 100.0);
-  Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
-  // CAMERA defaults to looking in the negative-z direction
-  camera_pose.translation() = Eigen::Vector3d(0., 0., 1);
-  scene.SetCameraPose(camera_pose);
-  scene.AddPlaneInstance(5, 5);
+  const double size = 2;
+  scene.AddPlaneInstance(size, size);
+  scene.AddSphereInstance(0.125);
+  const int SAMPLE_COUNT = 20;
+  const double start_angle = -M_PI_2;
+  const double end_angle = M_PI_2;
+  const double d_theta = (end_angle - start_angle) / (SAMPLE_COUNT - 1);
+  // CAMERA defaults to looking in the negative-z direction. We'll move it one
+  // meter away from the origin and rotate around the world' vertical axis in
+  // a semi-circular path.
+  Eigen::Isometry3d camera_pose;
+  for (int i = 0; i < SAMPLE_COUNT; ++i) {
+    double theta = start_angle + i * d_theta;
+    double c_theta = std::cos(theta);
+    double s_theta = std::sin(theta);
+    camera_pose.translation() << s_theta, 0, c_theta;
+    camera_pose.linear() = Eigen::AngleAxisd(theta, Eigen::Vector3d::UnitY()).matrix();
+    scene.SetCameraPose(camera_pose);
+    scene.FlushTransformNotifications();
+    renderer.Draw();
+    Ref<Image> image = scene.Capture();
+    image->save_png((save_path + "plane" + to_string(i) + ".png").c_str());
+  }
   scene.FlushTransformNotifications();
-//  scene.set_viewport_size(1280, 960);
   renderer.Draw();
   Ref<Image> image = scene.Capture();
   image->save_png((save_path + "plane.png").c_str());
