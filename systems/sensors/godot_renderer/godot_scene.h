@@ -85,6 +85,8 @@ public:
   void AddDirectionalLight(double d_x, double d_y, double d_z);
 
 private:
+
+  static Ref<SpatialMaterial> MakeSimplePlastic(double r, double g, double b);
   void InitDepthShader();
   Spatial* get_spatial_instance(int id);
   MeshMaterialsPair LoadMesh(const std::string& filename);

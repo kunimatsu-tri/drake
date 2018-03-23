@@ -207,11 +207,8 @@ int GodotScene::AddCubeInstance(double x_length, double y_length,
     cube_ = memnew(CubeMesh);
     cube_->set_size(Vector3(1.0, 1.0, 1.0));
   }
-  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
-  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(1.0, 0.0, 0.0));
-  material->set_script_instance(nullptr);
-  SpatialMaterial::flush_changes();
+  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 0, 0);
+//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
   int id = AddInstance(MeshMaterialsPair{cube_, {material}});
   SetInstanceScale(id, x_length, y_length, z_length);
   return id;
@@ -226,11 +223,8 @@ int GodotScene::AddSphereInstance(double radius) {
     sphere_->set_radius(1.0);
     sphere_->set_height(2.0);
   }
-  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
-  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(0.0, 1.0, 0.0));
-  material->set_script_instance(nullptr);
-  SpatialMaterial::flush_changes();
+  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 1, 0);
+//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
   int id = AddInstance(MeshMaterialsPair{sphere_, {material}});
   SetInstanceScale(id, radius, radius, radius);
   return id;
@@ -243,10 +237,9 @@ int GodotScene::AddCylinderInstance(double radius, double height) {
     cylinder_->set_bottom_radius(0.5);
     cylinder_->set_height(1.0);
   }
-  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
-  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  Ref<SpatialMaterial> material = MakeSimplePlastic(0, 0, 1);
+//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
   material->set_albedo(Color(0.0, 0.0, 1.0));
-  SpatialMaterial::flush_changes();
   int id = AddInstance(MeshMaterialsPair{cylinder_, {material}});
   // this call rotates the mesh into Drake's convention
   SetInstancePose(id, Eigen::Isometry3d::Identity());
@@ -259,12 +252,12 @@ int GodotScene::AddPlaneInstance(double x_size, double y_size) {
     plane_ = memnew(PlaneMesh);
     plane_->set_size(Size2(1.0, 1.0));
   }
-  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
-  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(1.0, 1.0, 1.0));
-  SpatialMaterial::flush_changes();
+
+  Ref<SpatialMaterial> material = MakeSimplePlastic(0, 1, 0);
   int id = AddInstance(MeshMaterialsPair{plane_, {material}});
-  // this call rotates the mesh into Drake's convention
+  // TODO(SeanCurtis-TRI): Inject a parent transform that takes the pose and
+  // allows the plane's transform to rotate it on the x-y plane (as opposed to
+  // the godot x-z default plane).
   SetInstancePose(id, Eigen::Isometry3d::Identity());
   SetInstanceScale(id, x_size, 1.0, y_size);
   return id;
@@ -306,16 +299,11 @@ GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) 
   Ref<ArrayMesh> mesh = ResourceLoader::load(String(filename.c_str()));
 
   // Load its material
-  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
-  material->set_albedo(Color(1.0, 1.0, 1.0, 1.0));
-
+  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 1, 1);
   // TODO: remove this hack
 //  String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 //  Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
 //  material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
-  material->set_metallic(1);
-  material->set_specular(0);
-  material->set_roughness(0.3);
 //  Ref<Texture> normal_tex = ResourceLoader::load(path + "aluminium_normal.png");
 //  material->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, true);
 //  material->set_texture(SpatialMaterial::TEXTURE_NORMAL, normal_tex);
@@ -327,7 +315,6 @@ GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) 
   // materials wont' work
   // Godot sets up so that this is called in SceneTree::call_idle_call_backs()
   // Not sure if we need to do this as an idle callback...
-  SpatialMaterial::flush_changes();
   MaterialList materials;
   for (int i = 0; i < mesh->get_surface_count(); ++i) {
     mesh->surface_set_material(i, material);
@@ -388,8 +375,6 @@ void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
 }
 
 void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WC) {
-  std::cout << "Set camera pose: " << X_WC.translation().transpose() << std::endl;
-  std::cout << X_WC.rotation() << std::endl;
   //camera_->set_transform(ConvertToGodotTransform(X_WC));
   camera_->set_transform(ConvertToGodotTransform(Eigen::Isometry3d::Identity()));
   const auto& t = X_WC.translation();
@@ -424,6 +409,61 @@ void GodotScene::SetInstanceLocalTransform(int id,
 
 void GodotScene::FlushTransformNotifications() {
   tree_->flush_transform_notifications();
+}
+
+Ref<SpatialMaterial> GodotScene::MakeSimplePlastic(double r,
+                                                   double g,
+                                                   double b) {
+
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+
+  // Flags
+  material->set_feature(SpatialMaterial::FEATURE_TRANSPARENT, false);
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, false);
+  material->set_flag(SpatialMaterial::FLAG_USE_VERTEX_LIGHTING, false);
+  material->set_flag(SpatialMaterial::FLAG_DISABLE_DEPTH_TEST, false);
+  material->set_flag(SpatialMaterial::FLAG_USE_POINT_SIZE, false);
+  material->set_flag(SpatialMaterial::FLAG_TRIPLANAR_USE_WORLD, false);
+  material->set_flag(SpatialMaterial::FLAG_FIXED_SIZE, false);
+  material->set_flag(SpatialMaterial::FLAG_ALBEDO_TEXTURE_FORCE_SRGB, false);
+
+  // Vertex Color
+  material->set_flag(SpatialMaterial::FLAG_ALBEDO_FROM_VERTEX_COLOR, false);
+  material->set_flag(SpatialMaterial::FLAG_SRGB_VERTEX_COLOR, false);
+
+  // Parameters
+  material->set_diffuse_mode(SpatialMaterial::DIFFUSE_BURLEY);
+  material->set_specular_mode(SpatialMaterial::SPECULAR_SCHLICK_GGX);
+  material->set_blend_mode(SpatialMaterial::BLEND_MODE_MIX);
+  material->set_cull_mode(SpatialMaterial::CULL_BACK);
+  material->set_depth_draw_mode(SpatialMaterial::DEPTH_DRAW_OPAQUE_ONLY);
+  material->set_billboard_mode(SpatialMaterial::BILLBOARD_DISABLED);
+  material->set_grow_enabled(false);
+  material->set_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR, false);
+
+  // Albedo
+  material->set_albedo(Color(r, g, b, 1.0));
+  // Metallic
+  material->set_metallic(0);
+  material->set_specular(0.5);
+  // Roughness
+  material->set_roughness(1);
+  // Features
+  material->set_feature(SpatialMaterial::FEATURE_EMISSION, false);
+  material->set_feature(SpatialMaterial::FEATURE_NORMAL_MAPPING, false);
+  material->set_feature(SpatialMaterial::FEATURE_RIM, false);
+  material->set_feature(SpatialMaterial::FEATURE_CLEARCOAT, false);
+  material->set_feature(SpatialMaterial::FEATURE_ANISOTROPY, false);
+  material->set_feature(SpatialMaterial::FEATURE_AMBIENT_OCCLUSION, false);
+  material->set_feature(SpatialMaterial::FEATURE_DEPTH_MAPPING, false);
+  material->set_feature(SpatialMaterial::FEATURE_SUBSURACE_SCATTERING, false);
+  material->set_feature(SpatialMaterial::FEATURE_TRANSMISSION, false);
+  material->set_feature(SpatialMaterial::FEATURE_REFRACTION, false);
+  material->set_feature(SpatialMaterial::FEATURE_DETAIL, false);
+
+  SpatialMaterial::flush_changes();
+
+  return material;
 }
 
 } // namespace godotvis
