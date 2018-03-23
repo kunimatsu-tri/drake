@@ -219,9 +219,12 @@ int GodotScene::AddCubeInstance(double x_length, double y_length,
 
 int GodotScene::AddSphereInstance(double radius) {
   if (!sphere_) {
+    // Unit sphere - radius = 1. Godot defines "spheres" with a radius and
+    // height. The radius is the radius of the equator the height is the total
+    // height of the sphere. So, a sphere has radius r and height 2r.
     sphere_ = memnew(SphereMesh);
-    sphere_->set_radius(0.5);
-    sphere_->set_height(1.0);
+    sphere_->set_radius(1.0);
+    sphere_->set_height(2.0);
   }
   Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
   material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
@@ -229,7 +232,7 @@ int GodotScene::AddSphereInstance(double radius) {
   material->set_script_instance(nullptr);
   SpatialMaterial::flush_changes();
   int id = AddInstance(MeshMaterialsPair{sphere_, {material}});
-  SetInstanceScale(id, radius*2.0, radius*2.0, radius*2.0);
+  SetInstanceScale(id, radius, radius, radius);
   return id;
 }
 
