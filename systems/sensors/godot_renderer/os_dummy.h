@@ -23,9 +23,13 @@ public:
   virtual void finalize() {}
 
 public:
-  virtual String get_name() { return String(); }
+  virtual String get_name() { return String("drake_dummy"); }
   virtual void delete_main_loop() {}
-  virtual bool _check_internal_feature_support(const String &) { return true; }
+  virtual bool _check_internal_feature_support(const String & p_feature) {
+    // These are the features explicitly listed by the osx and x11
+    // implementations of OS::_check_internal_feature_support.
+    return p_feature == "pc" || p_feature == "s3tc";
+  }
 
   virtual Point2 get_mouse_position() const { return Point2(); }
   virtual int get_mouse_button_state() const { return 0; }
