@@ -35,9 +35,24 @@ void GodotScene::Initialize() {
   InitDepthShader();
 }
 
+void GodotScene::AddDirectionalLight(double d_x, double d_y, double d_z) {
+
+  // Directional lights are initialized pointing down the -z axis.
+  DirectionalLight* d_light = memnew(DirectionalLight);
+  d_light->set_color(Color(1, 1, 1));
+  Basis basis;
+  basis.from_z(Vector3(d_x, d_y, d_z));
+  d_light->set_transform(Transform(basis));
+  // TODO(SeanCurtis-TRI): Make this a parameter.
+//  d_light->set_shadow(true);
+  // The shadow max distance must be >= the distance between camera and surface
+  // receiving the shadow.
+  // TODO(SeanCurtis-TRI): Parameterize this value based on "scene size".
+  d_light->set_param(Light::PARAM_SHADOW_MAX_DISTANCE, 1);
+  scene_root_->add_child(d_light);
+}
 
 void GodotScene::AddOmniLight(double x, double y, double z) {
-
   OmniLight *light = memnew(OmniLight);
   scene_root_->add_child(light);
   // Omni light parameters
@@ -90,7 +105,6 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
   env->set_sky(sky);
   env->set_bg_energy(5.0);
   tree_->get_root()->get_world()->set_environment(env);
-  // Add lights
 }
 
 void GodotScene::SetBackgroundColor(float r, float g, float b) {
@@ -103,7 +117,7 @@ void GodotScene::ImportGltf(const std::string& file_name) {
   // The importer interface has many arguments that we don't require:
   // flags: `p_flags` (unused by gltf parsing) and `p_bake_fps` (we don't
   //   support animation.
-  // The error handling (list of missing dependencies and error code is *not*
+  // The error handling (list of missing dependencies and error code) is *not*
   // currently implemented in the gltf parsing.
   List<String> missing_dependencies;
   Error error{OK};

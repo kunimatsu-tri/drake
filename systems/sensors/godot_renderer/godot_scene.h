@@ -82,6 +82,7 @@ public:
   void FlushTransformNotifications();
 
   void AddOmniLight(double x, double y, double z);
+  void AddDirectionalLight(double d_x, double d_y, double d_z);
 
 private:
   void InitDepthShader();
