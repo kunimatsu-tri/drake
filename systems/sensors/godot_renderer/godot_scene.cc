@@ -136,6 +136,11 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
   env->set_sky(sky);
   env->set_bg_energy(5.0);
   tree_->get_root()->get_world()->set_environment(env);
+
+  SpotLight* light = AddSpotLight();
+  light->set_param(Light::PARAM_RANGE, 2);
+  light->set_transform(Transform(Basis(), Vector3(0, 0, 1.5)));
+  light->set_param(SpotLight::PARAM_SPOT_ANGLE, 30);
 }
 
 void GodotScene::SetBackgroundColor(float r, float g, float b) {
@@ -362,6 +367,8 @@ GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename,
 
   // Load its material
   Ref<SpatialMaterial> material = MakeSimplePlastic(color);
+  material->set_metallic(1.);
+  material->set_roughness(0.2);
   // TODO: remove this hack
 //  String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 //  Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
