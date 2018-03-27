@@ -144,6 +144,7 @@ void GodotScene::SetBackgroundColor(float r, float g, float b) {
 }
 
 void GodotScene::ImportGltf(const std::string& file_name) {
+  // TODO(SeanCurtis-TRI): Handle label color!
   EditorSceneImporterGLTF importer;
   // The importer interface has many arguments that we don't require:
   // flags: `p_flags` (unused by gltf parsing) and `p_bake_fps` (we don't
@@ -178,6 +179,21 @@ Ref<Image> GodotScene::Capture() {
   return tree_->get_root()->get_texture()->get_data();
 }
 
+void GodotScene::ApplyLabelShader() {
+  tree_->get_root()->set_msaa(Viewport::MSAA_DISABLED);
+  for (const auto pair : label_materials_) {
+    int id = pair.first;
+    MeshInstance *instance =
+        Object::cast_to<MeshInstance>(scene_root_->get_child(id));
+    Ref<SpatialMaterial> material = label_materials_[id];
+    Ref<Mesh> mesh = instance->get_mesh();
+    for (int i = 0; i < mesh->get_surface_count(); ++i)
+      instance->set_surface_material(i, material);
+  }
+  SpatialMaterial::flush_changes();
+  env->set_background(Environment::BG_CLEAR_COLOR);
+}
+
 void GodotScene::ApplyDepthShader() {
   for (const auto pair : instance_materials_) {
     int id = pair.first;
@@ -192,6 +208,7 @@ void GodotScene::ApplyDepthShader() {
 }
 
 void GodotScene::ApplyMaterialShader() {
+  tree_->get_root()->set_msaa(Viewport::MSAA_16X);
   for (const auto pair : instance_materials_) {
     int id = pair.first;
     const MaterialList& materials = pair.second;
@@ -215,37 +232,42 @@ void GodotScene::Finish() {
   }
 }
 
-int GodotScene::AddInstance(const MeshMaterialsPair& mesh_materials) {
+int GodotScene::AddInstance(const MeshMaterialsPair& mesh_materials,
+                            Ref<SpatialMaterial> label) {
   MeshInstance *instance = memnew(MeshInstance);
   scene_root_->add_child(instance); // Must add before doing any settings
   instance->set_mesh(mesh_materials.mesh);
   instance->set_notify_local_transform(true);
   instance->set_notify_transform(true);
   int id = instance->get_position_in_parent();
+  label_materials_[id] = label;
   instance_materials_[id] = mesh_materials.materials;
   for (size_t i = 0; i < mesh_materials.materials.size(); ++i)
     instance->set_surface_material(i, mesh_materials.materials[i]);
   return id;
 }
 
-int GodotScene::AddMeshInstance(const std::string &filename) {
-  return AddInstance(LoadMesh(filename));
+int GodotScene::AddMeshInstance(const std::string &filename, const Color& color,
+                                const Color& label_color) {
+  return AddInstance(LoadMesh(filename, color), MakeLabelMaterial(label_color));
 }
 
 int GodotScene::AddCubeInstance(double x_length, double y_length,
-                                double z_length) {
+                                double z_length, const Color& color,
+                                const Color& label_color) {
   if (!cube_) {
     cube_ = memnew(CubeMesh);
     cube_->set_size(Vector3(1.0, 1.0, 1.0));
   }
-  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 0, 0);
-//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  int id = AddInstance(MeshMaterialsPair{cube_, {material}});
+  Ref<SpatialMaterial> material = MakeSimplePlastic(color);
+  Ref<SpatialMaterial> label = MakeLabelMaterial(label_color);
+  int id = AddInstance(MeshMaterialsPair{cube_, {material}}, label);
   SetInstanceScale(id, x_length, y_length, z_length);
   return id;
 }
 
-int GodotScene::AddSphereInstance(double radius) {
+int GodotScene::AddSphereInstance(double radius, const Color& color,
+                                  const Color& label_color) {
   if (!sphere_) {
     // Unit sphere - radius = 1. Godot defines "spheres" with a radius and
     // height. The radius is the radius of the equator the height is the total
@@ -254,38 +276,42 @@ int GodotScene::AddSphereInstance(double radius) {
     sphere_->set_radius(1.0);
     sphere_->set_height(2.0);
   }
-  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 1, 0);
-//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  int id = AddInstance(MeshMaterialsPair{sphere_, {material}});
+  Ref<SpatialMaterial> material = MakeSimplePlastic(color);
+  Ref<SpatialMaterial> label = MakeLabelMaterial(label_color);
+  int id = AddInstance(MeshMaterialsPair{sphere_, {material}}, label);
   SetInstanceScale(id, radius, radius, radius);
   return id;
 }
 
-int GodotScene::AddCylinderInstance(double radius, double height) {
+int GodotScene::AddCylinderInstance(double radius, double height,
+                                    const Color& color,
+                                    const Color& label_color) {
   if (!cylinder_) {
     cylinder_ = memnew(CylinderMesh);
     cylinder_->set_top_radius(0.5);
     cylinder_->set_bottom_radius(0.5);
     cylinder_->set_height(1.0);
   }
-  Ref<SpatialMaterial> material = MakeSimplePlastic(0, 0, 1);
-//  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(0.0, 0.0, 1.0));
-  int id = AddInstance(MeshMaterialsPair{cylinder_, {material}});
+  Ref<SpatialMaterial> material = MakeSimplePlastic(color);
+  Ref<SpatialMaterial> label = MakeLabelMaterial(label_color);
+  int id = AddInstance(MeshMaterialsPair{cylinder_, {material}}, label);
   // this call rotates the mesh into Drake's convention
   SetInstancePose(id, Eigen::Isometry3d::Identity());
   SetInstanceScale(id, radius*2.0, height, radius*2.0);
   return id;
 }
 
-int GodotScene::AddPlaneInstance(double x_size, double y_size) {
+int GodotScene::AddPlaneInstance(double x_size, double y_size,
+                                 const Color& color,
+                                 const Color& label_color) {
   if (!plane_) {
     plane_ = memnew(PlaneMesh);
     plane_->set_size(Size2(1.0, 1.0));
   }
 
-  Ref<SpatialMaterial> material = MakeSimplePlastic(0, 1, 0);
-  int id = AddInstance(MeshMaterialsPair{plane_, {material}});
+  Ref<SpatialMaterial> material = MakeSimplePlastic(color);
+  Ref<SpatialMaterial> label = MakeLabelMaterial(label_color);
+  int id = AddInstance(MeshMaterialsPair{plane_, {material}}, label);
   // TODO(SeanCurtis-TRI): Inject a parent transform that takes the pose and
   // allows the plane's transform to rotate it on the x-y plane (as opposed to
   // the godot x-z default plane).
@@ -319,7 +345,8 @@ Spatial *GodotScene::get_spatial_instance(int id) {
   return Object::cast_to<Spatial>(instance);
 }
 
-GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) {
+GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename,
+                                                   const Color& color) {
   // TODO: properly load a glTF file here!
   // Load a mesh
   // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(),
@@ -330,7 +357,7 @@ GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) 
   Ref<ArrayMesh> mesh = ResourceLoader::load(String(filename.c_str()));
 
   // Load its material
-  Ref<SpatialMaterial> material = MakeSimplePlastic(1, 1, 1);
+  Ref<SpatialMaterial> material = MakeSimplePlastic(color);
   // TODO: remove this hack
 //  String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 //  Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
@@ -442,10 +469,7 @@ void GodotScene::FlushTransformNotifications() {
   tree_->flush_transform_notifications();
 }
 
-Ref<SpatialMaterial> GodotScene::MakeSimplePlastic(double r,
-                                                   double g,
-                                                   double b) {
-
+Ref<SpatialMaterial> GodotScene::MakeSimplePlastic(const Color& color) {
   Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
 
   // Flags
@@ -473,7 +497,7 @@ Ref<SpatialMaterial> GodotScene::MakeSimplePlastic(double r,
   material->set_flag(SpatialMaterial::FLAG_USE_ALPHA_SCISSOR, false);
 
   // Albedo
-  material->set_albedo(Color(r, g, b, 1.0));
+  material->set_albedo(Color(color.r, color.g, color.b, 1.0));
   // Metallic
   material->set_metallic(0);
   material->set_specular(0.5);
@@ -494,6 +518,13 @@ Ref<SpatialMaterial> GodotScene::MakeSimplePlastic(double r,
 
   SpatialMaterial::flush_changes();
 
+  return material;
+}
+
+Ref<SpatialMaterial> GodotScene::MakeLabelMaterial(const Color& color) {
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  material->set_albedo(Color(color.r, color.g, color.b, 1.0));
   return material;
 }
 

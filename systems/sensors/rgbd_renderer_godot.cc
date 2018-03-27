@@ -55,10 +55,12 @@ class RgbdRendererGodot::Impl {
   }
 
   void AddFlatTerrain() {
-    int plane_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize);
-    auto color =
-        ColorPalette::Normalize(parent_->color_palette().get_terrain_color());
-    scene_.SetInstanceColor(plane_id, color.r, color.g, color.b);
+    // NOTE: Godot is in root namespace.
+    // The label and render color is the same.
+    ::Color color(GodotColor(
+        ColorPalette::Normalize(parent_->color_palette().get_terrain_color())));
+    int terrain_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize, color,
+                                             color);
   }
 
   optional<RgbdRenderer::VisualIndex> RegisterVisual(
@@ -101,22 +103,54 @@ class RgbdRendererGodot::Impl {
   }
 
   void RenderLabelImage(ImageLabel16I* label_image_out) const {
-    const int w = parent_->config().width;
-    const int h = parent_->config().height;
-    for (int y = 0; y < h; ++y) {
-      for (int x = 0; x < w; ++x) {
-        // NOTE: The value "2" here is to accommodate the
-        // rgbd_camera_rendering_example.cc code; a value of terrain or 1 is
-        // ignored. 2 triggers the logic that indicates that *something* is
-        // visible.
-        label_image_out->at(x, y)[0] = static_cast<int16_t>(2);
+    scene_.ApplyLabelShader();
+    scene_.FlushTransformNotifications();
+    renderer_->Draw();
+    Ref<::Image> image = scene_.Capture();
+
+//#define SAVE_LABEL_RENDERS
+#ifdef SAVE_LABEL_RENDERS
+    static int count = 0;
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(4) << (count++);
+    std::string filename = "/home/sean/Pictures/godot/label_test" +
+        ss.str() + ".png";
+    std::cout << "save image to: " << filename << std::endl;
+    image->save_png(filename.c_str());
+#endif
+
+    image->lock();
+    ColorI color;
+    for (int v = 0; v < parent_->config().height; ++v) {
+      for (int u = 0; u < parent_->config().width; ++u) {
+        ::Color pixel = image->get_pixel(u, v);
+        // NOTE: This relies on float -> int conversion via truncation. It has
+        // the effect of rounding c * 255 to the nearest int.
+        color.r = static_cast<int>(pixel.r * 255 + 0.5);
+        color.g = static_cast<int>(pixel.g * 255 + 0.5);
+        color.b = static_cast<int>(pixel.b * 255 + 0.5);
+        // Converting an RGB color to an object instance ID.
+        label_image_out->at(u, v)[0] =
+            static_cast<int16_t>(parent_->color_palette().LookUpId(color));
       }
     }
-//    throw std::runtime_error(
-//        "Godot renderer does not support label images yet!");
+    image->unlock();
+    image.unref();
   }
 
  private:
+  ::Color GodotColor(const Eigen::Vector4d& color) {
+    return ::Color(static_cast<float>(color[0]),
+                   static_cast<float>(color[1]),
+                   static_cast<float>(color[2]),
+                   static_cast<float>(color[3]));
+  }
+  ::Color GodotColor(const ColorD& color) {
+    return ::Color(static_cast<float>(color.r),
+                   static_cast<float>(color.g),
+                   static_cast<float>(color.b));
+  }
+
   void ConvertGodotImage(ImageRgba8U* image_out,
                          Ref<::Image>& image_in) const;
 
@@ -209,47 +243,39 @@ std::string ObjToMesh(const DrakeShapes::Mesh& mesh) {
 
 optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
     const DrakeShapes::VisualElement& visual, int body_id) {
-  std::cerr << "\n!!! RgbdRendererGodot::Impl::RegisterVisual\n";
   const DrakeShapes::Geometry& geometry = visual.getGeometry();
   int godot_id = -1;
+
+  // NOTE: Godot is in root namespace.
+  ::Color label_color(
+      GodotColor(parent_->color_palette().get_normalized_color(body_id)));
+  ::Color color(GodotColor(visual.getMaterial()));
+
   switch (visual.getShape()) {
     case DrakeShapes::BOX: {
       const auto& box = dynamic_cast<const DrakeShapes::Box&>(geometry);
-      godot_id = scene_.AddCubeInstance(box.size(0), box.size(1), box.size(2));
-      const auto& color = visual.getMaterial();
-      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+      godot_id = scene_.AddCubeInstance(box.size(0), box.size(1), box.size(2),
+                                        color, label_color);
       break;
     }
     case DrakeShapes::SPHERE: {
       const auto& sphere = dynamic_cast<const DrakeShapes::Sphere&>(geometry);
-      godot_id = scene_.AddSphereInstance(sphere.radius);
-      auto color = visual.getMaterial();
-      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+      godot_id = scene_.AddSphereInstance(sphere.radius, color, label_color);
       break;
     }
     case DrakeShapes::CYLINDER: {
       const auto& cylinder = dynamic_cast<const DrakeShapes::Cylinder&>(geometry);
-      godot_id = scene_.AddCylinderInstance(cylinder.length, cylinder.radius);
-      const auto& color = visual.getMaterial();
-      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+      godot_id = scene_.AddCylinderInstance(cylinder.length, cylinder.radius,
+                                            color, label_color);
       break;
     }
     case DrakeShapes::MESH: {
       // Swap obj for mesh, test if the file exists, load it.
       const auto& mesh = dynamic_cast<const DrakeShapes::Mesh&>(geometry);
 
-      godot_id = scene_.AddMeshInstance(ObjToMesh(mesh));
-      auto color = visual.getMaterial();
-      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
+      godot_id = scene_.AddMeshInstance(ObjToMesh(mesh), color, label_color);
       scene_.SetInstanceScale(godot_id, mesh.scale_(0), mesh.scale_(1),
                               mesh.scale_(2));
-
-      // TODO(duy) Use gltf in Drake by default?
-      //const auto* mesh_filename =
-      //dynamic_cast<const DrakeShapes::Mesh&>(geometry)
-      //.resolved_filename_.c_str();
-      //const std::string mesh_gltf(RemoveFileExtension(mesh_filename) + ".gltf");
-      //godot_id = scene_.AddMeshInstance(mesh_gltf);
       break;
     }
     default:

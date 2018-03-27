@@ -20,6 +20,7 @@ class GodotScene {
   Environment* env = NULL;
   MeshInstance* mesh_instance_ = NULL;
   Ref<ShaderMaterial> shader_material_;
+  Ref<ShaderMaterial> label_material_;
   //SpatialMaterial* material = NULL;
   CubeMesh* cube_ = nullptr;
   SphereMesh* sphere_ = nullptr;
@@ -30,6 +31,7 @@ class GodotScene {
   using MaterialList = std::vector<Ref<SpatialMaterial>>;
   /// Mapping from instance id to its material list
   std::map<int, MaterialList> instance_materials_;
+  std::map<int, Ref<SpatialMaterial>> label_materials_;
 
   struct MeshMaterialsPair {
     Ref<Mesh> mesh;
@@ -61,14 +63,20 @@ public:
   double get_camera_fov_y() const;
 
   Ref<Image> Capture();
+  void ApplyLabelShader();
   void ApplyDepthShader();
   void ApplyMaterialShader();
   void Finish();
-  int AddMeshInstance(const std::string& filename);
-  int AddCubeInstance(double x_length, double y_length, double z_length);
-  int AddSphereInstance(double radius);
-  int AddCylinderInstance(double radius, double height);
-  int AddPlaneInstance(double x_size, double y_size);
+  int AddMeshInstance(const std::string& filename,
+                      const Color& visual_color, const Color& label_color);
+  int AddCubeInstance(double x_length, double y_length, double z_length,
+                      const Color& visual_color, const Color& label_color);
+  int AddSphereInstance(double radius, const Color& color,
+                        const Color& label_color);
+  int AddCylinderInstance(double radius, double height, const Color& color,
+                          const Color& label_color);
+  int AddPlaneInstance(double x_size, double y_size, const Color& color,
+                       const Color& label_color);
 
   void SetInstanceTranslation(int id, const Eigen::Vector3d& t_WI);
   void SetInstanceRotation(int id, const Eigen::Isometry3d& t_WI);
@@ -87,11 +95,13 @@ public:
 
 private:
 
-  static Ref<SpatialMaterial> MakeSimplePlastic(double r, double g, double b);
+  static Ref<SpatialMaterial> MakeSimplePlastic(const Color& color);
+  static Ref<SpatialMaterial> MakeLabelMaterial(const Color& color);
   void InitDepthShader();
   Spatial* get_spatial_instance(int id);
-  MeshMaterialsPair LoadMesh(const std::string& filename);
-  int AddInstance(const MeshMaterialsPair& mesh_materials);
+  MeshMaterialsPair LoadMesh(const std::string& filename, const Color& color);
+  int AddInstance(const MeshMaterialsPair& mesh_materials,
+                  Ref<SpatialMaterial> label);
   void SetInstanceLocalTransform(int id, const Eigen::Isometry3d& X_WI);
 };
 

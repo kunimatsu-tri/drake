@@ -34,8 +34,10 @@ void test_plane() {
   scene.AddOmniLight(FLAGS_x, FLAGS_y, FLAGS_z);
   scene.AddCamera(65.0, 0.1, 100.0);
   const double size = 2;
-  scene.AddPlaneInstance(size, size);
-  scene.AddSphereInstance(0.125);
+  Color plane_color{0.0, 1.0, 0.0};
+  scene.AddPlaneInstance(size, size, plane_color, plane_color);
+  Color sphere_color{1.0, 1.0, 0.0};
+  scene.AddSphereInstance(0.125, sphere_color, sphere_color);
   const int SAMPLE_COUNT = 20;
   const double start_angle = -M_PI_2;
   const double end_angle = M_PI_2;
@@ -43,6 +45,7 @@ void test_plane() {
   // CAMERA defaults to looking in the negative-z direction. We'll move it one
   // meter away from the origin and rotate around the world' vertical axis in
   // a semi-circular path.
+  scene.ApplyLabelShader();
   Eigen::Isometry3d camera_pose;
   for (int i = 0; i < SAMPLE_COUNT; ++i) {
     double theta = start_angle + i * d_theta;
@@ -95,7 +98,8 @@ void RenderFork() {
   scene.SetCameraPose(camera_pose);
   scene.set_viewport_size(1280, 960);
 
-  int id = scene.AddMeshInstance("/home/sean/code/godot_projects/fork.mesh");
+  Color mesh_color{1.0, 1.0, 1.0};
+  int id = scene.AddMeshInstance("/home/sean/code/godot_projects/fork.mesh", mesh_color, mesh_color);
   Eigen::Isometry3d pose{Eigen::AngleAxisd(M_PI/4, Eigen::Vector3d{1, 1, 1})};
   scene.SetInstanceScale(id, 0.25, 0.25, 0.25);
 
@@ -146,20 +150,25 @@ void test_primitives() {
   //else
     //std::cout << "Pass!" << std::endl;
 
-  int cube_id = scene.AddCubeInstance(1., 1., 1.);
+  Color cube_color{1, 0, 0};
+  int cube_id = scene.AddCubeInstance(1., 1., 1., cube_color, cube_color);
 
-  int sphere_id = scene.AddSphereInstance(0.5);
+  Color sphere_color{0, 1, 0};
+  int sphere_id = scene.AddSphereInstance(0.5, sphere_color, sphere_color);
   pose = Eigen::Isometry3d::Identity();
   pose.translation() = Eigen::Vector3d(1.0, 0., 0.);
   scene.SetInstancePose(sphere_id, pose);
 
-  int cylinder_id = scene.AddCylinderInstance(0.5, 2.0);
+  Color cylinder_color{0, 0, 1};
+  int cylinder_id = scene.AddCylinderInstance(0.5, 2.0, cylinder_color,
+                                              cylinder_color);
   pose = Eigen::Isometry3d::Identity();
   pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
   pose.rotate(Eigen::AngleAxisd(M_PI/2.0, Eigen::Vector3d::UnitX()));
   scene.SetInstancePose(cylinder_id, pose);
 
-  int plane_id = scene.AddPlaneInstance(5.0, 5.0);
+  Color plane_color{0, 1, 1};
+  int plane_id = scene.AddPlaneInstance(5.0, 5.0, plane_color, plane_color);
   pose = Eigen::Isometry3d::Identity();
   pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
   pose.rotate(Eigen::AngleAxisd(M_PI/3.0, Eigen::Vector3d::UnitY()));
