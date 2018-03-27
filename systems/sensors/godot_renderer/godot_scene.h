@@ -81,8 +81,9 @@ public:
   void SetInstanceColor(int id, float r, float g, float b, float alpha = 1.0f);
   void FlushTransformNotifications();
 
-  void AddOmniLight(double x, double y, double z);
-  void AddDirectionalLight(double d_x, double d_y, double d_z);
+  OmniLight* AddOmniLight(double x, double y, double z);
+  DirectionalLight* AddDirectionalLight(double d_x, double d_y, double d_z);
+  SpotLight* AddSpotLight();
 
 private:
 

@@ -36,7 +36,7 @@ void GodotScene::Initialize() {
   InitDepthShader();
 }
 
-void GodotScene::AddDirectionalLight(double d_x, double d_y, double d_z) {
+DirectionalLight* GodotScene::AddDirectionalLight(double d_x, double d_y, double d_z) {
 
   // Directional lights are initialized pointing down the -z axis.
   DirectionalLight* d_light = memnew(DirectionalLight);
@@ -51,13 +51,40 @@ void GodotScene::AddDirectionalLight(double d_x, double d_y, double d_z) {
   // TODO(SeanCurtis-TRI): Parameterize this value based on "scene size".
   d_light->set_param(Light::PARAM_SHADOW_MAX_DISTANCE, 1);
   scene_root_->add_child(d_light);
+  return d_light;
 }
 
-void GodotScene::AddOmniLight(double x, double y, double z) {
-  OmniLight *light = memnew(OmniLight);
+SpotLight* GodotScene::AddSpotLight() {
+  // NOTE: By default, spotlights point in the -z direction.
+  SpotLight* light = memnew(SpotLight);
+  scene_root_->add_child(light);
+
+  // Spot light parameters
+  light->set_param(Light::PARAM_RANGE, 3.0);
+  light->set_param(Light::PARAM_ATTENUATION, 0.05);
+  light->set_param(SpotLight::PARAM_SPOT_ANGLE, 45);
+  light->set_param(SpotLight::PARAM_SPOT_ATTENUATION, 30);
+
+  // Light parameters
+  light->set_color(Color(1.0, 1.0, 1.0));
+  light->set_param(Light::PARAM_ENERGY, 1);
+  light->set_param(Light::PARAM_INDIRECT_ENERGY, 1);
+  light->set_negative(false);
+  light->set_param(Light::PARAM_SPECULAR, 0.5);
+  light->set_bake_mode(Light::BAKE_INDIRECT);
+
+  // Shadow parameters
+  light->set_shadow(true);
+  light->set_param(Light::PARAM_SHADOW_BIAS, 0.01);
+
+  return light;
+}
+
+OmniLight* GodotScene::AddOmniLight(double x, double y, double z) {
+  OmniLight* light = memnew(OmniLight);
   scene_root_->add_child(light);
   // Omni light parameters
-  light->set_param(Light::PARAM_RANGE, 5.0);
+  light->set_param(Light::PARAM_RANGE, 3.0);
   light->set_param(Light::PARAM_ATTENUATION, 1.0);
   light->set_shadow_mode(OmniLight::SHADOW_CUBE);
   light->set_shadow_detail(OmniLight::SHADOW_DETAIL_HORIZONTAL);
@@ -68,9 +95,12 @@ void GodotScene::AddOmniLight(double x, double y, double z) {
   light->set_negative(false);
   light->set_param(Light::PARAM_SPECULAR, 0.5);
   light->set_bake_mode(Light::BAKE_INDIRECT);
+  // Shadow parameters
   light->set_shadow(true);
+  light->set_param(Light::PARAM_SHADOW_BIAS, 0.01);
 
   light->set_transform(Transform(Basis(), Vector3(x, y, z)));
+  return light;
 }
 
 void GodotScene::SetupEnvironment(const std::string& env_filename) {
