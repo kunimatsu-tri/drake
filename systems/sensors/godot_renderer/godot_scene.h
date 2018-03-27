@@ -62,6 +62,8 @@ public:
   std::pair<int, int> get_viewport_size() const;
   double get_camera_fov_y() const;
 
+  MeshInstance* get_mesh_instance(int id);
+
   Ref<Image> Capture();
   void ApplyLabelShader();
   void ApplyDepthShader();

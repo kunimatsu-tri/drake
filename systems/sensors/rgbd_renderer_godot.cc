@@ -61,6 +61,9 @@ class RgbdRendererGodot::Impl {
         ColorPalette::Normalize(parent_->color_palette().get_terrain_color())));
     int terrain_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize, color,
                                              color);
+    MeshInstance* instance = scene_.get_mesh_instance(terrain_id);
+    DRAKE_DEMAND(instance != nullptr);
+    instance->set_cast_shadows_setting(GeometryInstance::SHADOW_CASTING_SETTING_OFF);
   }
 
   optional<RgbdRenderer::VisualIndex> RegisterVisual(

@@ -25,7 +25,7 @@ void GodotScene::Initialize() {
   tree_ = memnew(SceneTree);
   tree_->init();
   tree_->get_root()->set_msaa(Viewport::MSAA_16X);
-  tree_->get_root()->set_shadow_atlas_size(1024);
+  tree_->get_root()->set_shadow_atlas_size(4096);
 
   // Dummy Spatial as the top root of the scene
   scene_root_ = memnew(Spatial);
@@ -126,7 +126,7 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
 #endif
   // TODO: This will be freed by Environment. Also, what's the correct way to
   // create a Ref<Sky>?
-  PanoramaSky *sky = memnew(PanoramaSky);
+  PanoramaSky* sky = memnew(PanoramaSky);
   sky->set_panorama(sky_texture);
   sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
 
@@ -177,6 +177,10 @@ void GodotScene::AddCamera(double fov_y, double z_near, double z_far) {
 
 Ref<Image> GodotScene::Capture() {
   return tree_->get_root()->get_texture()->get_data();
+}
+
+MeshInstance* GodotScene::get_mesh_instance(int id) {
+  return Object::cast_to<MeshInstance>(scene_root_->get_child(id));
 }
 
 void GodotScene::ApplyLabelShader() {
