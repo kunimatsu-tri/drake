@@ -1,6 +1,8 @@
 #include "drake/systems/sensors/rgbd_renderer_godot.h"
 
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 #include <spruce.hh>
 
@@ -216,31 +218,40 @@ void RgbdRendererGodot::Impl::UpdateViewpoint(
   scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
 }
 
-// Helper function to tentatively convert an obj file name to a .mesh file name.
-std::string ObjToMesh(const DrakeShapes::Mesh& mesh) {
+// Helper function to tentatively convert an obj file name to a .gltf or .mesh
+// file name. First priority is to find the gltf, fall back is mesh. Throws
+// an exception in every other case.
+std::string ObjToGodot(const DrakeShapes::Mesh& mesh) {
   size_t dot_position(mesh.resolved_filename_.find('.'));
   if (dot_position == std::string::npos) {
     throw std::runtime_error("Mesh file has no extension: " + mesh.uri_);
   }
 
   std::string source_file = mesh.resolved_filename_;
-  {
-    std::string extension{mesh.resolved_filename_.substr(dot_position)};
-    std::transform(extension.begin(), extension.end(), extension.begin(),
-                   ::tolower);
-    if (extension != ".obj" && extension != ".mesh") {
-      throw std::runtime_error("Mesh file has unrecognized extension: "
-                                   + extension);
-    }
-    if (extension == ".obj") {
-      source_file = source_file.substr(0, dot_position) + ".mesh";
-    }
-    spruce::path source_path{source_file};
-    if (!source_path.exists()) {
-      throw std::runtime_error(
-          "Can't load expected file for requested mesh: " + source_file);
-    }
+  std::string extension{mesh.resolved_filename_.substr(dot_position)};
+  std::transform(extension.begin(), extension.end(), extension.begin(),
+                 ::tolower);
+  if (extension != ".obj" && extension != ".mesh" && extension != ".gltf") {
+    throw std::runtime_error("Mesh file has unrecognized extension: " +
+                             extension);
   }
+
+  // Try mapping obj, first to gltf, and then to mesh.
+  spruce::path source_path{};
+  if (extension == ".obj") {
+    source_path.setStr(source_file.substr(0, dot_position) + ".gltf");
+    if (source_path.exists()) {
+      return source_path.getStr();
+    }
+    source_path.setStr(source_file.substr(0, dot_position) + ".mesh");
+    if (source_path.exists()) {
+      return source_path.getStr();
+    }
+    throw std::runtime_error(
+        "Couldn't find a .mesh or .gltf file for the specified obj file: " +
+        source_file);
+  }
+
   return source_file;
 }
 
@@ -276,7 +287,8 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
       // Swap obj for mesh, test if the file exists, load it.
       const auto& mesh = dynamic_cast<const DrakeShapes::Mesh&>(geometry);
 
-      godot_id = scene_.AddMeshInstance(ObjToMesh(mesh), color, label_color);
+
+      godot_id = scene_.AddMeshInstance(ObjToGodot(mesh), color, label_color);
       scene_.SetInstanceScale(godot_id, mesh.scale_(0), mesh.scale_(1),
                               mesh.scale_(2));
       break;

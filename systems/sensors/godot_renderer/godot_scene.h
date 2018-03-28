@@ -45,7 +45,7 @@ public:
   void SetupEnvironment(const std::string& env_filename);
   void SetBackgroundColor(float r, float g, float b);
 
-  void ImportGltf(const std::string& file_name);
+  int ImportGltf(const std::string& file_name, Ref<SpatialMaterial> label);
 
   /// Add a camera to the scene. Only support one camera for now.
   /// TODO: handle distortion

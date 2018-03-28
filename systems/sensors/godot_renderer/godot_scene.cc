@@ -8,6 +8,7 @@
 #include <servers/visual/visual_server_global.h>
 
 #include <editor/editor_node.h>
+#include <queue>
 
 // stub-out Godot functions that we don't link
 void EditorNode::progress_add_task(const String &p_task, const String &p_label, int p_steps, bool p_can_cancel ) {}
@@ -148,7 +149,32 @@ void GodotScene::SetBackgroundColor(float r, float g, float b) {
   env->set_bg_color(Color{r, g, b, 1.0f});
 }
 
-void GodotScene::ImportGltf(const std::string& file_name) {
+// Find the first node in the tree rooted at `node` (via a breadth-first search)
+// that is a MeshInstance. Throw an exception if none can be found. This will
+// ignore multiple MeshInstance nodes; remove it from the tree and return it.
+MeshInstance* FindMeshInstance(Node* node) {
+  std::queue<std::pair<Node*, Node*>> q;
+  q.push(std::make_pair(nullptr, node));
+  while (!q.empty()) {
+    std::pair<Node*, Node*> pair = q.front();
+    Node* p = pair.first;
+    Node* n = pair.second;
+    q.pop();
+    MeshInstance* instance = Object::cast_to<MeshInstance>(n);
+    if (instance != nullptr) {
+      if (p != nullptr) p->remove_child(n);
+      return instance;
+    }
+
+    for (int c = 0; c < n->get_child_count(); ++c) {
+      q.push(std::make_pair(n, n->get_child(c)));
+    }
+  }
+  throw std::runtime_error("Couldn't find MeshInstance in the given Node");
+}
+
+int GodotScene::ImportGltf(const std::string& file_name,
+                           Ref<SpatialMaterial> label) {
   // TODO(SeanCurtis-TRI): Handle label color!
   EditorSceneImporterGLTF importer;
   // The importer interface has many arguments that we don't require:
@@ -160,14 +186,29 @@ void GodotScene::ImportGltf(const std::string& file_name) {
   Error error{OK};
   Node* node = importer.import_scene(file_name.c_str(), 0, 0,
                                      &missing_dependencies, &error);
+  int id;
   if (node) {
-    scene_root_->add_child(node);
+    // Strip out the *single* allowable MeshInstance
+    MeshInstance* mesh_instance = FindMeshInstance(node);
+    scene_root_->add_child(mesh_instance);
+    id = mesh_instance->get_position_in_parent();
+    label_materials_[id] = label;
+    MaterialList materials;
+    Ref<Mesh> mesh = mesh_instance->get_mesh();
+    for (int i = 0; i < mesh->get_surface_count(); ++i)
+      materials.push_back(mesh_instance->get_surface_material(i));
+    instance_materials_[id] = materials;
+    if (mesh_instance != node) memdelete(node);
+    // TODO(SeanCurtis-TRI): Walk the tree and store all materials. Would it be
+    // better to have two versions of this and swap them?
   } else {
     // TODO(SeanCurtis-TRI): Make use of the error message when the importer
     // likewise makes use of it.
     throw std::runtime_error("Unable to load the file: " + file_name);
   }
   SpatialMaterial::flush_changes();
+
+  return id;
 }
 
 /// Add a camera to the scene. Only support one camera for now.
@@ -258,7 +299,20 @@ int GodotScene::AddInstance(const MeshMaterialsPair& mesh_materials,
 
 int GodotScene::AddMeshInstance(const std::string &filename, const Color& color,
                                 const Color& label_color) {
-  return AddInstance(LoadMesh(filename, color), MakeLabelMaterial(label_color));
+  std::string extension = filename.substr(filename.size() - 4);
+  std::transform(extension.begin(), extension.end(), extension.begin(),
+                 ::tolower);
+  Ref<SpatialMaterial> label = MakeLabelMaterial(label_color);
+  if (extension == "mesh") {
+    return AddInstance(LoadMesh(filename, color), label);
+  } else if (extension == "gltf") {
+    return ImportGltf(filename, label);
+  } else {
+    throw std::logic_error(
+        "Add mesh instance should only be invoked with mesh "
+        "or gltf files; invoked on: " +
+        filename);
+  }
 }
 
 int GodotScene::AddCubeInstance(double x_length, double y_length,
@@ -426,14 +480,17 @@ void GodotScene::SetInstancePose(Spatial* instance,
   // clang-format on
   // TODO(duy): Add comment here about Godot's plane coordinate frame
   // and the differences of set_transform vs set_rotation
-  Mesh* mesh = Object::cast_to<MeshInstance>(instance)->get_mesh().ptr();
-  if (mesh->get_class_name() == "CylinderMesh" ||
-      mesh->get_class_name() == "PlaneMesh") {
-    // clang-format off
-    basis = Basis(1., 0., 0.,
-                  0., 0., -1.,
-                  0., 1., 0.) * basis;
-    // clang-format on
+  MeshInstance* mesh_instance = Object::cast_to<MeshInstance>(instance);
+  if (mesh_instance != nullptr) {
+    Mesh* mesh = mesh_instance->get_mesh().ptr();
+    if (mesh->get_class_name() == "CylinderMesh" ||
+        mesh->get_class_name() == "PlaneMesh") {
+      // clang-format off
+      basis = Basis(1., 0., 0.,
+                    0., 0., -1.,
+                    0., 1., 0.) * basis;
+      // clang-format on
+    }
   }
   instance->set_rotation(basis.get_rotation());
 }
