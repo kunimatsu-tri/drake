@@ -82,15 +82,17 @@ class RgbdRendererGodot::Impl {
   void UpdateViewpoint(const Eigen::Isometry3d& X_WR) const;
 
   void RenderColorImage(ImageRgba8U* color_image_out) const {
-//#define SAVE_COLOR_RENDERS
     scene_.ApplyMaterialShader();
     scene_.FlushTransformNotifications();
     renderer_->Draw();
     Ref<::Image> image = scene_.Capture();
+//#define SAVE_COLOR_RENDERS
 #ifdef SAVE_COLOR_RENDERS
     static int count = 0;
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(4) << (count++);
     std::string filename = "/home/sean/Pictures/godot/rgbd_test" +
-        std::to_string(count++) + ".png";
+        ss.str() + ".png";
     std::cout << "save image to: " << filename << std::endl;
     image->save_png(filename.c_str());
 #endif
