@@ -8,6 +8,7 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 #include "drake/systems/sensors/image.h"
+#include "drake/systems/sensors/rgbd_renderer.h"
 
 namespace drake {
 namespace systems {
@@ -51,6 +52,10 @@ class RgbdRendererTest : public ::testing::Test {
     renderer_->RenderLabelImage(&label_);
   }
 
+  void RenderColorImage() {
+    renderer_->RenderColorImage(&color_);
+  }
+
   void VerifyUniformColor(const sensors::ColorI& pixel, int alpha) {
     for (int y = 0; y < kHeight; ++y) {
       for (int x = 0; x < kWidth; ++x) {
@@ -76,17 +81,20 @@ class RgbdRendererTest : public ::testing::Test {
   }
 
   // Verifies the chosen pixels, i.e. `kOutliers`, belong to the ground.
-  void VerifyOutliers() {
+  void VerifyOutliers(bool color_only = false) {
     const auto& kTerrain = renderer_->color_palette().get_terrain_color();
     for (const auto& screen_coord : kOutliers) {
       const int x = screen_coord.x;
       const int y = screen_coord.y;
       // Color
       CompareColor(color_.at(x, y), kTerrain, 255u, kColorPixelTolerance);
-      // Depth
-      ASSERT_NEAR(depth_.at(x, y)[0], kDefaultDistance, kDepthTolerance);
-      // Label
-      ASSERT_EQ(label_.at(x, y)[0], Label::kFlatTerrain);
+
+      if (!color_only) {
+        // Depth
+        ASSERT_NEAR(depth_.at(x, y)[0], kDefaultDistance, kDepthTolerance);
+        // Label
+        ASSERT_EQ(label_.at(x, y)[0], Label::kFlatTerrain);
+      }
     }
   }
 
@@ -126,7 +134,7 @@ class RgbdRendererTest : public ::testing::Test {
   ImageLabel16I label_;
   Eigen::Isometry3d X_WC_;
 
-  std::unique_ptr<RgbdRenderer> renderer_;
+  std::unique_ptr<Renderer> renderer_;
 };
 
 }  // namespace test

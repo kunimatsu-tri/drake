@@ -100,6 +100,10 @@ _PACKAGES = [
     "thirdparty/minizip/**",
     "thirdparty/misc/**",
     "thirdparty/zstd/**",
+    "thirdparty/jpeg-compressor/**",
+    "thirdparty/tinyexr/**",
+    "modules/jpg/**",
+    "modules/hdr/**",
 ]
 
 # Compile a library with everything from Godot that we need.
@@ -115,10 +119,18 @@ cc_library(
         "drivers/unix/dir_access_unix.cpp",
         "drivers/unix/file_access_unix.cpp",
         "editor/**/*.h",
+        "editor/import/editor_scene_importer_gltf.cpp",
+        "editor/import/resource_importer_scene.cpp",
         "platform/**/*.h",
         "platform/**/globals/global_defaults.cpp",
     ]),
     hdrs = glob([
+        x + "/*.h"
+        for x in _PACKAGES
+    ] + [
+        x + "/*.hpp"
+        for x in _PACKAGES
+    ] + [
         x + "/*.h"
         for x in _PACKAGES
     ] + [
@@ -130,12 +142,14 @@ cc_library(
     copts = [
         "-Wno-c++11-narrowing",
         "-w",
+        "-I/usr/include/freetype2"
     ],
     defines = [
         "FREETYPE_ENABLED",
         "GLAD_ENABLED",
         "GLES_OVER_GL",
         "UNIX_ENABLED",
+        "FREETYPE_ENABLED",
         "ZSTD_STATIC_LINKING_ONLY",
     ],
     includes = [
@@ -149,12 +163,14 @@ cc_library(
         "drivers",
         "drivers/gles3",
         "platform/x11",
+        "thirdparty/jpeg-compressor",
         "thirdparty/glad",
+        #"thirdparty/freetype/include",
         "thirdparty/zstd",
         "thirdparty/zstd/common",
     ],
     linkopts = select({
-        "@drake//tools/cc_toolchain:linux": ["-ldl"],
+        "@drake//tools/cc_toolchain:linux": ["-ldl", "-lfreetype"],
         "//conditions:default": [],
     }),
     textual_hdrs = glob([

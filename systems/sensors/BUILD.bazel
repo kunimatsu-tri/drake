@@ -179,12 +179,14 @@ drake_cc_library(
     name = "rgbd_renderer",
     srcs = [
         "rgbd_renderer.cc",
+        "rgbd_renderer_godot.cc",
         "rgbd_renderer_vtk.cc",
     ],
     hdrs = [
         "color_palette.h",
         "depth_shaders.h",
         "rgbd_renderer.h",
+        "rgbd_renderer_godot.h",
         "rgbd_renderer_vtk.h",
     ],
     deps = [
@@ -192,7 +194,9 @@ drake_cc_library(
         ":vtk_util",
         "//common",
         "//multibody/shapes",
+        "//systems/sensors/godot_renderer",
         "@eigen",
+        "@spruce",
         "@vtk//:vtkCommonCore",
         "@vtk//:vtkCommonDataModel",
         "@vtk//:vtkCommonTransforms",
@@ -252,6 +256,28 @@ drake_cc_binary(
         "//systems/lcm",
         "//systems/rendering:pose_stamped_t_pose_vector_translator",
         "@gflags",
+    ],
+)
+
+drake_cc_binary(
+    name = "rgbd_camera_rendering_example",
+    srcs = [
+        "rgbd_camera_rendering_example.cc",
+    ],
+    deps = [
+        ":image",
+        ":rgbd_camera",
+        "//common:unused",
+        "//lcm",
+        "//multibody:rigid_body_tree",
+        "//multibody:rigid_body_tree_construction",
+        "//multibody/parsers",
+        "//multibody/rigid_body_plant",
+        "//multibody/rigid_body_plant:drake_visualizer",
+        "//systems/analysis:simulator",
+        "//systems/lcm",
+        "@gflags",
+        "@vtk//:vtkIOImage",
     ],
 )
 
@@ -471,6 +497,30 @@ drake_cc_googletest(
         "//common:find_resource",
         "//common/test_utilities:eigen_matrix_compare",
         "//math:geometric_transform",
+    ],
+)
+
+drake_cc_googletest(
+    name = "rgbd_renderer_godot_test",
+    data = [
+        ":test_models",
+    ],
+    # Mitigates driver-related issues when running under `bazel test`. For more
+    # information, see #7004.
+    local = 1,
+    # Disable under LeakSanitizer and Valgrind Memcheck due to driver-related
+    # leaks. For more information, see #7520.
+    tags = [
+        "no_lsan",
+        "no_memcheck",
+    ],
+    deps = [
+        ":rgbd_renderer",
+        ":rgbd_renderer_test_util",
+        "//common:find_resource",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//math:geometric_transform",
+        "//systems/sensors/godot_renderer",
     ],
 )
 
