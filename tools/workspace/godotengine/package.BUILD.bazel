@@ -31,6 +31,9 @@ py_binary(
         "@drake//tools/workspace/godotengine:main_make_binders.py",
     ],
     main = "@drake//tools/workspace/godotengine:main_make_binders.py",
+    imports = [
+        "/home/kunimatsu/work/sean-godot/godot",
+    ]
 )
 
 # Run the tool that knows how to emit method_bind*.gen.inc files.

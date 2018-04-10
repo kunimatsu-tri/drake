@@ -11,6 +11,6 @@ def godotengine_repository(
         commit = "9bd402698cfa299b79b9144f8d7744c308a4e085",
         sha256 = "cbec9b48d79b1fdc16a253f438fb06544a59baf71cf2c1f47c193817f2127a10",  # noqa
         build_file = "@drake//tools/workspace/godotengine:package.BUILD.bazel",
-        local_repository_override="/home/sean/code/godot",
+        local_repository_override="/home/kunimatsu/work/sean-godot/godot",
         mirrors = mirrors,
     )

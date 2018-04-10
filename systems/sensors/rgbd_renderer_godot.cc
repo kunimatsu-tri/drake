@@ -18,7 +18,7 @@ namespace  {
 const double kClippingPlaneNear = 0.01;
 const double kClippingPlaneFar = 100.;
 const double kTerrainSize = 100.;
-const std::string path = "/home/sean/code/godot-demo-projects/3d/material_testers/";
+const std::string path = "/home/kunimatsu/work/godot-demo-projects/3d/material_testers/";
 
 // TODO(SeanCurtis-Tri): This needs to be never_destroyed but with a destructor
 // being called. So, it should have a *weak* pointer which returns shared
@@ -86,12 +86,12 @@ class RgbdRendererGodot::Impl {
     scene_.FlushTransformNotifications();
     renderer_->Draw();
     Ref<::Image> image = scene_.Capture();
-//#define SAVE_COLOR_RENDERS
+    // #define SAVE_COLOR_RENDERS
 #ifdef SAVE_COLOR_RENDERS
     static int count = 0;
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(4) << (count++);
-    std::string filename = "/home/sean/Pictures/godot/rgbd_test" +
+    std::string filename = "/home/kunimatsu/Pictures/godot/rgbd_test" +
         ss.str() + ".png";
     std::cout << "save image to: " << filename << std::endl;
     image->save_png(filename.c_str());
@@ -120,7 +120,7 @@ class RgbdRendererGodot::Impl {
     static int count = 0;
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(4) << (count++);
-    std::string filename = "/home/sean/Pictures/godot/label_test" +
+    std::string filename = "/home/kunimatsu/Pictures/godot/label_test" +
         ss.str() + ".png";
     std::cout << "save image to: " << filename << std::endl;
     image->save_png(filename.c_str());

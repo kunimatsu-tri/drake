@@ -62,7 +62,7 @@ DEFINE_string(sdf_floating, "box.sdf",
 DEFINE_validator(sdf_dir, &ValidateDir);
 DEFINE_validator(sdf_fixed, &ValidateSdf);
 DEFINE_validator(sdf_floating, &ValidateSdf);
-DEFINE_string(output_dir, "/home/sean/Pictures/godot/",
+DEFINE_string(output_dir, "/home/kunimatsu/Pictures/godot/",
               "The full path to the directory into which images will be "
               "written");
 
@@ -315,7 +315,7 @@ int main() {
   drake::unused(sdf_fixed_validator_registered);
   drake::unused(sdf_floating_validator_registered);
 
-  std::ofstream out("/home/sean/output" + std::to_string(FLAGS_num) + ".yaml");
+  std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
 //  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
 //    std::cout << "Simulating No. " << i << "." << std::endl;

@@ -63,11 +63,11 @@ SpotLight* GodotScene::AddSpotLight() {
   // Spot light parameters
   light->set_param(Light::PARAM_RANGE, 3.0);
   light->set_param(Light::PARAM_ATTENUATION, 0.05);
-  light->set_param(SpotLight::PARAM_SPOT_ANGLE, 45);
-  light->set_param(SpotLight::PARAM_SPOT_ATTENUATION, 30);
+  light->set_param(SpotLight::PARAM_SPOT_ANGLE, 45);  // Tweak this.
+  light->set_param(SpotLight::PARAM_SPOT_ATTENUATION, 30);  // Tweak this. Lower value gets you softer images.
 
   // Light parameters
-  light->set_color(Color(1.0, 1.0, 1.0));
+  light->set_color(Color(1.0, 1.0, 1.0)); // Tweak this.
   light->set_param(Light::PARAM_ENERGY, 1);
   light->set_param(Light::PARAM_INDIRECT_ENERGY, 1);
   light->set_negative(false);
@@ -135,7 +135,7 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
   env = memnew(Environment);
   env->set_background(Environment::BG_SKY);
   env->set_sky(sky);
-  env->set_bg_energy(5.0);
+  env->set_bg_energy(5.0); // Tweak this. Higher value, more reflection.
   tree_->get_root()->get_world()->set_environment(env);
 
   SpotLight* light = AddSpotLight();
@@ -597,4 +597,3 @@ Ref<SpatialMaterial> GodotScene::MakeLabelMaterial(const Color& color) {
 }
 
 } // namespace godotvis
-
