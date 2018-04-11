@@ -185,7 +185,7 @@ void Generate(int num, std::ofstream& out) {
       FLAGS_sdf_dir + "/silverware" + n + ".sdf",
       kQuaternion, tree.get());
 
-  // drake::multibody::AddFlatTerrainToWorld(tree.get());
+  drake::multibody::AddFlatTerrainToWorld(tree.get());
 
   systems::DiagramBuilder<double> builder;
 
@@ -203,11 +203,11 @@ void Generate(int num, std::ofstream& out) {
   model_parameters.v_stiction_tolerance = 0.01;  // m/s
   plant->set_contact_model_parameters(model_parameters);
 
-  double x = -0.4;  // Rand(-0.4, -0.3);
+  double x = 0.;  // Rand(-0.4, -0.3);
   double y = 0.;  // Rand(-0.1, 0.1);
-  double z = 1.;  // Rand(0.9, 1.1);
+  double z = Rand(0.5, 0.8);
   double roll = 0.;  // Rand(-0.2, 0.2);
-  double pitch = M_PI_2 * 0.8;  // Rand(M_PI_2 * 0.8 - 0.1, M_PI_2 * 0.8 + 0.1);
+  double pitch = Rand(M_PI_2 * 0.9, M_PI_2 * 1.1);
   double yaw = 0.;  // Rand(-0.2, 0.2);
 
   auto rgbd_camera =
@@ -216,8 +216,6 @@ void Generate(int num, std::ofstream& out) {
               "rgbd_camera", plant->get_rigid_body_tree(),
               Eigen::Vector3d(x, y, z),
               Eigen::Vector3d(roll, pitch, yaw),
-              // Eigen::Vector3d(-0.4, 0., 1.),
-              // Eigen::Vector3d(0., M_PI_2 * 0.8, 0.),
               0.5, 5.0, M_PI_4, FLAGS_show_window),
       kCameraUpdatePeriod);
 
@@ -258,7 +256,7 @@ void Generate(int num, std::ofstream& out) {
 
   simulator->StepTo(FLAGS_duration);
   diagram->CalcOutput(simulator->get_context(), output.get());
-
+  std::cout << "Done!!!\n";
   std::cerr << "Casting output port to label image\n";
 
   auto sys_label =
@@ -317,12 +315,13 @@ int main() {
 
   std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
-//  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
-//    std::cout << "Simulating No. " << i << "." << std::endl;
-//    Generate(i, out);
-//  }
+ for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
+   std::cout << "Simulating No. " << i << "." << std::endl;
+   Generate(i, out);
+ }
 
-  Generate(FLAGS_num, out);
+  // Generate(FLAGS_num, out);
+
   out.close();
   return 0;
 }

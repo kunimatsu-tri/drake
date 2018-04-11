@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include <spruce.hh>
+#include <yaml-cpp/yaml.h>
 
 #include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
@@ -18,8 +19,8 @@ namespace  {
 const double kClippingPlaneNear = 0.01;
 const double kClippingPlaneFar = 100.;
 const double kTerrainSize = 100.;
-const std::string path = "/home/kunimatsu/work/godot-demo-projects/3d/material_testers/";
-
+// const std::string path = "/home/kunimatsu/work/godot-demo-projects/3d/material_testers/";
+const std::string path = "/home/kunimatsu/dataset/coco/val2014/";
 // TODO(SeanCurtis-Tri): This needs to be never_destroyed but with a destructor
 // being called. So, it should have a *weak* pointer which returns shared
 // pointers.
@@ -44,7 +45,13 @@ class RgbdRendererGodot::Impl {
     scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
     // TODO: Setup environment, lighting, GI Probes, etc...
     // Probably from a json config file
-    scene_.SetupEnvironment(path + "night.hdr");
+    // scene_.SetupEnvironment(path + "night.hdr");
+    YAML::Node node = YAML::LoadFile(
+        "/home/kunimatsu/work/drake/systems/sensors/bg_image_list.yaml");
+    assert(node.IsSequence());
+    int index = rand() % 10682;
+    auto filename = node[index].as<std::string>();
+    scene_.SetupEnvironment(path + filename);
 
     const auto sky_color =
         ColorPalette::Normalize(parent_->color_palette().get_sky_color());
@@ -115,7 +122,7 @@ class RgbdRendererGodot::Impl {
     renderer_->Draw();
     Ref<::Image> image = scene_.Capture();
 
-//#define SAVE_LABEL_RENDERS
+    // #define SAVE_LABEL_RENDERS
 #ifdef SAVE_LABEL_RENDERS
     static int count = 0;
     std::stringstream ss;
@@ -137,8 +144,16 @@ class RgbdRendererGodot::Impl {
         color.g = static_cast<int>(pixel.g * 255 + 0.5);
         color.b = static_cast<int>(pixel.b * 255 + 0.5);
         // Converting an RGB color to an object instance ID.
-        label_image_out->at(u, v)[0] =
-            static_cast<int16_t>(parent_->color_palette().LookUpId(color));
+
+        // TODO(kunimatsu-tri) Handle this correctly. An exception will be
+        // thrown at LookUpId(color) when AddFlatTerrain is not called.
+        int label;
+        if (color.r == 127 && color.g == 127 && color.b) {
+          label = Label::kFlatTerrain;
+        } else {
+          label = parent_->color_palette().LookUpId(color);
+        }
+        label_image_out->at(u, v)[0] = static_cast<int16_t>(label);
       }
     }
     image->unlock();

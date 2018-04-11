@@ -104,6 +104,24 @@ OmniLight* GodotScene::AddOmniLight(double x, double y, double z) {
   return light;
 }
 
+
+void shift(Ref<Image>& image) {
+  int h = image->get_height();
+  int w = image->get_width();
+  int half_w = w / 2;
+  image->lock();
+  for (int y = 0; y < h; ++y) {
+    for (int x = 0; x < half_w; ++x) {
+      int offset_x = x + half_w;
+      // offset_x = offset_x % w;
+      auto p = image->get_pixel(x, y);
+      image->set_pixel(x, y, image->get_pixel(offset_x, y));
+      image->set_pixel(offset_x, y, p);
+    }
+  }
+  image->unlock();
+}
+
 void GodotScene::SetupEnvironment(const std::string& env_filename) {
   // Load skybox resource
   String skyfilename{env_filename.c_str()};
@@ -116,6 +134,8 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
     std::cerr << "Unable to load: " << env_filename << "\n";
     return;
   }
+
+  shift(image);
 
   Ref<ImageTexture> sky_texture;
   sky_texture.instance();
@@ -135,7 +155,7 @@ void GodotScene::SetupEnvironment(const std::string& env_filename) {
   env = memnew(Environment);
   env->set_background(Environment::BG_SKY);
   env->set_sky(sky);
-  env->set_bg_energy(5.0); // Tweak this. Higher value, more reflection.
+  env->set_bg_energy(1.0); // Tweak this. Higher value, more reflection.
   tree_->get_root()->get_world()->set_environment(env);
 
   SpotLight* light = AddSpotLight();

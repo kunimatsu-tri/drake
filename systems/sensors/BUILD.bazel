@@ -278,6 +278,10 @@ drake_cc_binary(
         "//systems/lcm",
         "@gflags",
         "@vtk//:vtkIOImage",
+        "@yaml_cpp",
+    ],
+    data = [
+        ":yamls",
     ],
 )
 
@@ -577,6 +581,11 @@ drake_cc_googletest(
         "//systems/framework",
         "@optitrack_driver//lcmtypes:optitrack_lcmtypes",
     ],
+)
+
+filegroup(
+    name = "yamls",
+    srcs = glob(["*.yaml"]),
 )
 
 add_lint_tests()
