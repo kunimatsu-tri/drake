@@ -185,7 +185,7 @@ void Generate(int num, std::ofstream& out) {
       FLAGS_sdf_dir + "/silverware" + n + ".sdf",
       kQuaternion, tree.get());
 
-  drake::multibody::AddFlatTerrainToWorld(tree.get());
+  // drake::multibody::AddFlatTerrainToWorld(tree.get());
 
   systems::DiagramBuilder<double> builder;
 
