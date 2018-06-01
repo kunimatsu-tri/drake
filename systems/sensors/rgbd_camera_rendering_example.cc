@@ -57,12 +57,9 @@ DEFINE_string(sdf_dir, "",
               "The full path of directory where SDFs are located.");
 DEFINE_string(sdf_fixed, "sphere.sdf",
               "The filename for a SDF that contains fixed base objects.");
-DEFINE_string(sdf_floating, "box.sdf",
-              "The filename for a SDF that contains floating base objects.");
 DEFINE_validator(sdf_dir, &ValidateDir);
 DEFINE_validator(sdf_fixed, &ValidateSdf);
-DEFINE_validator(sdf_floating, &ValidateSdf);
-DEFINE_string(output_dir, "/home/kunimatsu/Pictures/godot/",
+DEFINE_string(output_dir, "/home/kunimatsu/Pictures/",
               "The full path to the directory into which images will be "
               "written");
 
@@ -219,6 +216,9 @@ void Generate(int num, std::ofstream& out) {
               0.5, 5.0, M_PI_4, FLAGS_show_window),
       kCameraUpdatePeriod);
 
+  std::cout << "Drake X_BC:\n";
+  std::cout << rgbd_camera->camera().color_camera_optical_pose().matrix() << "\n";
+
   ::drake::lcm::DrakeLcm lcm;
   auto drake_viz = builder.template AddSystem<DrakeVisualizer>(
       plant->get_rigid_body_tree(), &lcm);
@@ -244,11 +244,9 @@ void Generate(int num, std::ofstream& out) {
 
   auto simulator = std::make_unique<systems::Simulator<double>>(
       *diagram, std::move(context));
-
   simulator->set_publish_at_initialization(true);
   simulator->set_publish_every_time_step(false);
   simulator->Initialize();
-
   simulator->reset_integrator<RungeKutta2Integrator<double>>(
       *diagram, 0.0001, &simulator->get_mutable_context());
   simulator->get_mutable_integrator()->set_maximum_step_size(0.001);
@@ -311,16 +309,15 @@ void Generate(int num, std::ofstream& out) {
 int main() {
   drake::unused(sdf_dir_validator_registered);
   drake::unused(sdf_fixed_validator_registered);
-  drake::unused(sdf_floating_validator_registered);
 
   std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
- for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
-   std::cout << "Simulating No. " << i << "." << std::endl;
-   Generate(i, out);
- }
+  // for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
+  //   std::cout << "Simulating No. " << i << "." << std::endl;
+  //   Generate(i, out);
+  // }
 
-  // Generate(FLAGS_num, out);
+  Generate(FLAGS_num, out);
 
   out.close();
   return 0;
