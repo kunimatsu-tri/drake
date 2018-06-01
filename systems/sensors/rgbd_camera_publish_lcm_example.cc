@@ -55,12 +55,12 @@ DEFINE_bool(show_window, RenderingConfig::kDefaultShowWindow,
 DEFINE_double(duration, 5., "Total duration of the simulation in secondes.");
 DEFINE_string(sdf_dir, "",
               "The full path of directory where SDFs are located.");
-DEFINE_string(sdf_fixed, "sphere.sdf",
-              "The filename for a SDF that contains fixed base objects.");
+// DEFINE_string(sdf_fixed, "sphere.sdf",
+//               "The filename for a SDF that contains fixed base objects.");
 DEFINE_string(sdf_floating, "box.sdf",
               "The filename for a SDF that contains floating base objects.");
 DEFINE_validator(sdf_dir, &ValidateDir);
-DEFINE_validator(sdf_fixed, &ValidateSdf);
+// DEFINE_validator(sdf_fixed, &ValidateSdf);
 DEFINE_validator(sdf_floating, &ValidateSdf);
 
 constexpr double kCameraUpdatePeriod{0.01};
@@ -86,12 +86,12 @@ struct CameraConfig {
 
 int main() {
   drake::unused(sdf_dir_validator_registered);
-  drake::unused(sdf_fixed_validator_registered);
+  // drake::unused(sdf_fixed_validator_registered);
   drake::unused(sdf_floating_validator_registered);
 
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
-      FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
+  // drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
+  //     FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
 
   drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
       FLAGS_sdf_dir + "/" + FLAGS_sdf_floating, kQuaternion, tree.get());
