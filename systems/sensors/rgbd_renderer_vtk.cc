@@ -17,6 +17,7 @@
 #include <vtkImageExport.h>
 #include <vtkNew.h>
 #include <vtkOBJReader.h>
+#include <vtkLight.h>
 #include <vtkOpenGLPolyDataMapper.h>
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkOpenGLTexture.h>
@@ -404,6 +405,11 @@ RgbdRendererVTK::Impl::Impl(RgbdRendererVTK* parent,
     pipelines_[ImageType::kDepth]->renderer->SetBackground(1., 1., 1.);
   }
 
+  vtkNew<vtkLight> light;
+  light->SetPosition(-2, 0, 10);
+  light->SetFocalPoint(0, 0, 0);
+  light->PositionalOff();
+  pipelines_[ImageType::kColor]->renderer->AddLight(light);
   pipelines_[ImageType::kColor]->renderer->SetUseDepthPeeling(1);
   pipelines_[ImageType::kColor]->renderer->UseFXAAOn();
 
