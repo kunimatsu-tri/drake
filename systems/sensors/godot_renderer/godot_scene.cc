@@ -105,6 +105,8 @@ OmniLight* GodotScene::AddOmniLight(double x, double y, double z) {
 }
 
 
+// This is to shift an image as an environmental map towards x direction,
+// so that the seam in environment map becomes invisible from camera viewpoint.
 void shift(Ref<Image>& image) {
   int h = image->get_height();
   int w = image->get_width();
