@@ -174,8 +174,8 @@ double Rand(double min, double max) {
 
 void Generate(int num, std::ofstream& out) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-//  drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
-//      FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
+ drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
+     FLAGS_sdf_dir + "/" + FLAGS_sdf_fixed, kFixed, tree.get());
 
   std::string n = std::to_string(num);
   drake::parsers::sdf::AddModelInstancesFromSdfFileToWorld(
@@ -266,6 +266,7 @@ void Generate(int num, std::ofstream& out) {
 
     auto sys_rgb =
         output->GetMutableData(0)->GetMutableValue<ImageRgba8U>();
+
     SaveToFile<PixelType::kRgba8U>(
         std::string(FLAGS_output_dir) + "rgb" + n + ".png", sys_rgb);
 
@@ -312,10 +313,10 @@ int main() {
 
   std::ofstream out("/home/kunimatsu/output" + std::to_string(FLAGS_num) + ".yaml");
 
-  // for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
-  //   std::cout << "Simulating No. " << i << "." << std::endl;
-  //   Generate(i, out);
-  // }
+  for (int i = FLAGS_num; (i == FLAGS_num) || (i % 2000 != 0); ++i) {
+    std::cout << "Simulating No. " << i << "." << std::endl;
+    Generate(i, out);
+  }
 
   Generate(FLAGS_num, out);
 
