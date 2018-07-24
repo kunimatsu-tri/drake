@@ -240,7 +240,7 @@ void Generate(int num, std::ofstream& out) {
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
   std::unique_ptr<systems::SystemOutput<double>> output =
-      diagram->AllocateOutput(*context);
+      diagram->AllocateOutput();
 
   auto simulator = std::make_unique<systems::Simulator<double>>(
       *diagram, std::move(context));
@@ -291,7 +291,7 @@ void Generate(int num, std::ofstream& out) {
     result += fmt::format("  objects:\n");
     auto kinematics =
         output->GetMutableData(2)->GetMutableValue<KinematicsResults<double>>();
-    for (const auto& body : plant->get_rigid_body_tree().bodies) {
+    for (const auto& body : plant->get_rigid_body_tree().get_bodies()) {
       string body_name = body->get_name();
       if (body_name == "world")
         continue;
