@@ -39,6 +39,7 @@
 #include <vtkWindowToImageFilter.h>
 
 #include "drake/common/drake_assert.h"
+#include "drake/common/never_destroyed.h"
 #include "drake/common/unused.h"
 #include "drake/systems/sensors/depth_shaders.h"
 #include "drake/systems/sensors/vtk_util.h"
@@ -107,6 +108,21 @@ struct ModuleInitVtkRenderingOpenGL2 {
   }
 };
 
+class OSPRayPassSingleton {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(OSPRayPassSingleton)
+
+  static vtkSmartPointer<vtkOSPRayPass> GetInstance() {
+    static never_destroyed<OSPRayPassSingleton> instance;
+    return vtkSmartPointer<vtkOSPRayPass>(instance.access().ospray_);
+  }
+
+ private:
+  friend never_destroyed<OSPRayPassSingleton>;
+  OSPRayPassSingleton() = default;
+
+  vtkNew<vtkOSPRayPass> ospray_;
+};
 }  // namespace
 
 class RgbdRendererOSPRay::Impl : private ModuleInitVtkRenderingOpenGL2 {
@@ -149,10 +165,6 @@ class RgbdRendererOSPRay::Impl : private ModuleInitVtkRenderingOpenGL2 {
   // respectively. Each vtkActor corresponds to an visual element specified in
   // SDF / URDF.
   std::map<int, std::array<ActorCollection, kNumOutputImage>> id_object_maps_;
-
-  vtkNew<vtkOSPRayPass> ospray_;
-  std::array<vtkNew<vtkActor>, kNumOutputImage> actors_;
-  std::array<vtkNew<vtkPolyDataMapper>, kNumOutputImage> mappers_;
 };
 
 void RgbdRendererOSPRay::Impl::SetBackground(
@@ -267,7 +279,7 @@ RgbdRendererOSPRay::Impl::Impl(RgbdRendererOSPRay* parent,
   }
 
   // OSPRay specific configuration.
-  cp->renderer->SetPass(ospray_);
+  cp->renderer->SetPass(OSPRayPassSingleton::GetInstance());
   vtkOSPRayRendererNode::SetRendererType("pathtracer", cp->renderer);
   vtkOSPRayRendererNode::SetSamplesPerPixel(1, cp->renderer);
 
@@ -312,6 +324,8 @@ optional<RgbdRenderer::VisualIndex>
 RgbdRendererOSPRay::Impl::ImplRegisterVisual(
     const DrakeShapes::VisualElement& visual, int body_id) {
   bool shape_matched = true;
+  std::array<vtkNew<vtkActor>, kNumOutputImage> actors_;
+  std::array<vtkNew<vtkPolyDataMapper>, kNumOutputImage> mappers_;
   const DrakeShapes::Geometry& geometry = visual.getGeometry();
   switch (visual.getShape()) {
     // TODO(kunimatsu-tri) Load material property for primitive shapes.
