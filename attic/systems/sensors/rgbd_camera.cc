@@ -11,7 +11,7 @@
 #include "drake/systems/rendering/pose_vector.h"
 #include "drake/systems/sensors/camera_info.h"
 #include "drake/systems/sensors/image.h"
-#include "drake/systems/sensors/rgbd_renderer_vtk.h"
+#include "drake/systems/sensors/rgbd_renderer_ospray.h"
 
 namespace drake {
 namespace systems {
@@ -33,7 +33,7 @@ RgbdCamera::RgbdCamera(const std::string& name,
           Eigen::Translation3d(position[0], position[1], position[2]) *
           Eigen::Isometry3d(math::RollPitchYaw<double>(orientation)
                                 .ToMatrix3ViaRotationMatrix())),
-      renderer_(new RgbdRendererVTK(
+      renderer_(new RgbdRendererOSPRay(
           RenderingConfig{width, height, fov_y, z_near, z_far, show_window},
           Eigen::Translation3d(position[0], position[1], position[2]) *
           Eigen::Isometry3d(math::RollPitchYaw<double>(orientation)
@@ -54,7 +54,7 @@ RgbdCamera::RgbdCamera(const std::string& name,
       color_camera_info_(width, height, fov_y),
       depth_camera_info_(width, height, fov_y),
       renderer_(
-          new RgbdRendererVTK(RenderingConfig{width, height, fov_y,
+          new RgbdRendererOSPRay(RenderingConfig{width, height, fov_y,
                                               z_near, z_far, show_window},
                               Eigen::Isometry3d::Identity())) {
   InitPorts(name);
