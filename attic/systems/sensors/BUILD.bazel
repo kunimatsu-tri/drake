@@ -146,6 +146,7 @@ drake_cc_library(
         "rgbd_renderer.h",
         "rgbd_renderer_ospray.h",
         "rgbd_renderer_vtk.h",
+        "scoped_timer.h",
     ],
     deps = [
         "//attic/multibody/shapes",

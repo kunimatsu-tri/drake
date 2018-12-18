@@ -1,5 +1,8 @@
 #include "drake/systems/sensors/rgbd_renderer.h"
 
+#include "drake/systems/sensors/scoped_timer.h"
+
+
 namespace drake {
 namespace systems {
 namespace sensors {
@@ -33,14 +36,17 @@ void RgbdRenderer::UpdateVisualPose(
 }
 
 void RgbdRenderer::RenderColorImage(ImageRgba8U* color_image_out) const {
+  auto timer = ScopedTimer("RenderColorImage");
   ImplRenderColorImage(color_image_out);
 }
 
 void RgbdRenderer::RenderDepthImage(ImageDepth32F* depth_image_out) const {
+  auto timer = ScopedTimer("RenderDepthImage");
   ImplRenderDepthImage(depth_image_out);
 }
 
 void RgbdRenderer::RenderLabelImage(ImageLabel16I* label_image_out) const {
+  auto timer = ScopedTimer("RenderLabelImage");
   ImplRenderLabelImage(label_image_out);
 }
 
