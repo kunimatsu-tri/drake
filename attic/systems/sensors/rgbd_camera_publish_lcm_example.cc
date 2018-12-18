@@ -64,7 +64,8 @@ DEFINE_validator(sdf_fixed, &ValidateSdf);
 DEFINE_validator(sdf_floating, &ValidateSdf);
 
 constexpr double kCameraUpdatePeriod{0.01};
-constexpr bool kCameraRenderLabelImage{true};
+constexpr bool kCameraRenderDepthImage{false};
+constexpr bool kCameraRenderLabelImage{false};
 
 constexpr char kCameraBaseFrameName[] = "camera_base_frame";
 constexpr char kColorCameraFrameName[] = "color_camera_optical_frame";
@@ -137,11 +138,15 @@ int main() {
               config.pos, config.rpy,
               config.depth_range_near, config.depth_range_far,
               config.fov_y, FLAGS_show_window),
-      kCameraUpdatePeriod, kCameraRenderLabelImage);
+          kCameraUpdatePeriod, kCameraRenderDepthImage,
+          kCameraRenderLabelImage);
 
   auto image_to_lcm_image_array =
-      builder.template AddSystem<ImageToLcmImageArrayT>(
-          kColorCameraFrameName, kDepthCameraFrameName, kLabelCameraFrameName);
+      builder.template AddSystem<ImageToLcmImageArrayT>();
+
+  auto color_input_index = image_to_lcm_image_array->DeclareImageInputPort<
+    PixelType::kRgba8U>(kColorCameraFrameName).get_index();
+
   image_to_lcm_image_array->set_name("converter");
 
   ::drake::lcm::DrakeLcm lcm;
@@ -171,15 +176,7 @@ int main() {
 
   builder.Connect(
       rgbd_camera->color_image_output_port(),
-      image_to_lcm_image_array->color_image_input_port());
-
-  builder.Connect(
-      rgbd_camera->depth_image_output_port(),
-      image_to_lcm_image_array->depth_image_input_port());
-
-  builder.Connect(
-      rgbd_camera->label_image_output_port(),
-      image_to_lcm_image_array->label_image_input_port());
+      image_to_lcm_image_array->get_input_port(color_input_index));
 
   builder.Connect(
       image_to_lcm_image_array->image_array_t_msg_output_port(),

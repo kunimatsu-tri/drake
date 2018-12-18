@@ -261,7 +261,8 @@ void RgbdCamera::OutputLabelImage(const Context<double>& context,
 }
 
 RgbdCameraDiscrete::RgbdCameraDiscrete(
-    std::unique_ptr<RgbdCamera> camera, double period, bool render_label_image)
+    std::unique_ptr<RgbdCamera> camera, double period,
+    bool render_depth_image, bool render_label_image)
     : camera_(camera.get()), period_(period) {
   const auto& color_camera_info = camera->color_camera_info();
   const auto& depth_camera_info = camera->depth_camera_info();
@@ -280,13 +281,16 @@ RgbdCameraDiscrete::RgbdCameraDiscrete(
   output_port_color_image_ = builder.ExportOutput(zoh_color->get_output_port());
 
   // Depth image.
-  const Value<ImageDepth32F> image_depth(
-      depth_camera_info.width(), depth_camera_info.height());
-  const auto* const zoh_depth =
-      builder.AddSystem<ZeroOrderHold>(period_, image_depth);
-  builder.Connect(camera_->depth_image_output_port(),
-                  zoh_depth->get_input_port());
-  output_port_depth_image_ = builder.ExportOutput(zoh_depth->get_output_port());
+  if (render_depth_image) {
+    const Value<ImageDepth32F> image_depth(
+        depth_camera_info.width(), depth_camera_info.height());
+    const auto* const zoh_depth =
+        builder.AddSystem<ZeroOrderHold>(period_, image_depth);
+    builder.Connect(camera_->depth_image_output_port(),
+                    zoh_depth->get_input_port());
+    output_port_depth_image_ =
+        builder.ExportOutput(zoh_depth->get_output_port());
+  }
 
   // Label image.
   if (render_label_image) {

@@ -356,6 +356,7 @@ class RgbdCameraDiscrete final : public systems::Diagram<double> {
   ///   false, `label_image_output_port` will raise an error if called.
   RgbdCameraDiscrete(std::unique_ptr<RgbdCamera> camera,
                      double period = kDefaultPeriod,
+                     bool render_depth_image = true,
                      bool render_label_image = true);
 
   /// Returns reference to RgbdCamera intsance.
